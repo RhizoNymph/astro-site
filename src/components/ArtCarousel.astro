@@ -1,0 +1,283 @@
+---
+// src/components/ArtCarousel.astro
+interface ArtItem {
+    href: string;
+    src: string;
+    alt: string;
+}
+
+// Define your art items here (make sure paths start with /art/)
+const artItems: ArtItem[] = [
+    { href: "https://zora.co/collect/zora:0xeacd0d149c69a26bc5d52639270307970d12f9a3/1", src: "/art/ChurchOfChaos.png", alt: "Church of Chaos" },
+    { href: "https://zora.co/collect/zora:0xc8eaccdb8bbc79da37867eb68e58d1824d5c24e1/4", src: "/art/Looking.png", alt: "Looking" },
+    { href: "https://zora.co/collect/zora:0xc8eaccdb8bbc79da37867eb68e58d1824d5c24e1/1", src: "/art/AD_00011.gif", alt: "AD_00011" },
+    { href: "https://zora.co/collect/zora:0xc8eaccdb8bbc79da37867eb68e58d1824d5c24e1/2", src: "/art/GlitchGradientBranchesSmall.gif", alt: "Glitch Gradient Branches" },
+    { href: "https://zora.co/collect/zora:0x2d80c7a65fef4c8f67cbc831363a7b3691dfb6aa/1", src: "/art/progress.webp", alt: "Progress" },
+    { href: "https://zora.co/collect/zora:0x2d80c7a65fef4c8f67cbc831363a7b3691dfb6aa/2", src: "/art/It'sGoingToBeOkay.gif", alt: "It's Going To Be Okay" },
+    { href: "https://zora.co/collect/zora:0x4e16fc00229d15481a1228f715737fa9b579e61b/1", src: "/art/lasers1_small.gif", alt: "Lasers 1" },
+    { href: "https://zora.co/collect/zora:0x4e16fc00229d15481a1228f715737fa9b579e61b/2", src: "/art/lasers2_small.gif", alt: "Lasers 2" },
+    { href: "https://zora.co/collect/zora:0x4e16fc00229d15481a1228f715737fa9b579e61b/3", src: "/art/lasers3_small.gif", alt: "Lasers 3" },
+    { href: "https://zora.co/collect/zora:0x9eb812752cbee981e3fb590a9ae0b1aa5d7a109a/1", src: "/art/Hyperreal Technology 1.gif", alt: "Hyperreal Technology 1" },
+    { href: "https://zora.co/collect/zora:0x3aa1019529c795cc3f4a6418e38f667b13cbae37/2", src: "/art/AbstractExpressionsOfMySoulPiece2_small.gif", alt: "Abstract Expressions Of My Soul Piece 2" },
+    { href: "https://zora.co/collect/zora:0x3aa1019529c795cc3f4a6418e38f667b13cbae37/3", src: "/art/AbstractExpressionsOfMySoulPiece3_small.gif", alt: "Abstract Expressions Of My Soul Piece 3" },
+    { href: "https://zora.co/collect/zora:0x3aa1019529c795cc3f4a6418e38f667b13cbae37/4", src: "/art/AbstractExpressionsOfMySoulPiece4_small.gif", alt: "Abstract Expressions Of My Soul Piece 4" },
+    { href: "#", src: "/art/alchemical.png", alt: "Alchemical circles" } // Assuming this one isn't linked on Zora
+];
+---
+<div class="art-carousel-container">
+    <div class="art-header">
+        <button class="embla__button embla__button--prev">Previous</button>
+        <h2>Art Showcase</h2> <!-- Changed from H1 for semantics -->
+        <button class="embla__button embla__button--next">Next</button>
+    </div>
+
+    <div class="embla">
+         <div class="embla__dots"></div>
+        <div class="embla__viewport">
+            <div class="embla__container">
+                {artItems.map(item => (
+                    <div class="embla__slide">
+                        <a href={item.href} target="_blank" rel="noopener noreferrer">
+                            <img src={item.src} alt={item.alt} class="embla__slide__img">
+                            <div class="embla__slide__caption">{item.alt}</div>
+                        </a>
+                    </div>
+                ))}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Styles copied & adapted from original index.html -->
+<style>
+    .art-carousel-container {
+        margin-bottom: 30px; /* Add some space below */
+    }
+    .art-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+    .art-header h2 {
+        margin-bottom: 0; /* Reset margin from global styles */
+    }
+
+    .embla__button {
+        background: rgba(0, 0, 0, 0.5);
+        color: white;
+        border: none;
+        padding: 10px;
+        cursor: pointer;
+        border-radius: 4px;
+    }
+
+    .embla__button:hover {
+        background: rgba(0, 0, 0, 0.7);
+    }
+
+    .embla__button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+     .embla {
+         position: relative;
+         max-width: 600px; /* Adjust as needed */
+         margin: auto;
+         background-color: #333; /* Add a subtle background */
+         border-radius: 5px;
+         padding: 10px;
+     }
+     .embla__viewport {
+         overflow: hidden;
+     }
+     .embla__container {
+         display: flex;
+     }
+     .embla__slide {
+         flex: 0 0 100%;
+         min-width: 0;
+         position: relative;
+     }
+     .embla__slide a {
+         display: block; /* Ensure link covers the slide */
+     }
+     .embla__slide__img {
+          display: block;
+          width: 100%;
+          height: auto;
+          max-height: 400px; /* Adjust height as needed */
+          object-fit: contain;
+          border-radius: 3px; /* Slight rounding */
+      }
+      .embla__slide__caption {
+          position: absolute;
+          bottom: 5px;
+          left: 5px;
+          right: 5px;
+          padding: 3px 5px;
+          background: rgba(0, 0, 0, 0.6);
+          color: white;
+          text-align: center;
+          font-size: 0.8em;
+          border-radius: 0 0 3px 3px;
+          opacity: 0;
+          transition: opacity 0.3s ease;
+      }
+      .embla__slide:hover .embla__slide__caption {
+          opacity: 1;
+      }
+     .embla__dots {
+         display: flex;
+         justify-content: center;
+         align-items: center;
+         margin-bottom: 10px; /* Move dots above image */
+         position: absolute; /* Position dots over the image */
+         top: 10px;
+         left: 0;
+         right: 0;
+         z-index: 1; /* Ensure dots are clickable */
+
+     }
+
+     .embla__dot {
+         width: 10px;
+         height: 10px;
+         border-radius: 50%;
+         background-color: rgba(255, 255, 255, 0.5);
+         margin: 0 5px;
+         padding: 0;
+         cursor: pointer;
+         border: none;
+         transition: all 0.3s ease;
+     }
+
+     .embla__dot--selected {
+         background-color: white;
+         transform: scale(1.5);
+     }
+</style>
+
+<!-- Client-side script to initialize Embla -->
+<script>
+    import EmblaCarousel from 'embla-carousel'
+
+    const addDotBtnsAndClickHandlers = (emblaApi, dotsNode) => {
+        let dotNodes = [];
+
+        const addDotBtnsWithClickHandlers = () => {
+            dotsNode.innerHTML = emblaApi
+                .scrollSnapList()
+                .map(() => '<button class="embla__dot" type="button"></button>')
+                .join('');
+
+            dotNodes = Array.from(dotsNode.querySelectorAll('.embla__dot'));
+            dotNodes.forEach((dotNode, index) => {
+                dotNode.addEventListener('click', () => emblaApi.scrollTo(index), false);
+            });
+        };
+
+        const toggleDotBtnsActive = () => {
+            const previous = emblaApi.previousScrollSnap();
+            const selected = emblaApi.selectedScrollSnap();
+            // Ensure dotNodes are populated before accessing
+            if (dotNodes[previous]) dotNodes[previous].classList.remove('embla__dot--selected');
+            if (dotNodes[selected]) dotNodes[selected].classList.add('embla__dot--selected');
+        };
+
+        emblaApi
+            .on('init', addDotBtnsWithClickHandlers)
+            .on('reInit', addDotBtnsWithClickHandlers)
+            .on('init', toggleDotBtnsActive)
+            .on('reInit', toggleDotBtnsActive)
+            .on('select', toggleDotBtnsActive);
+
+        // Initial selection if dots are rendered after init
+        if (emblaApi.selectedScrollSnap() >= 0 && dotNodes.length > 0) {
+             if (dotNodes[emblaApi.selectedScrollSnap()]) {
+                 dotNodes[emblaApi.selectedScrollSnap()].classList.add('embla__dot--selected');
+             }
+         }
+
+        return () => {
+            dotsNode.innerHTML = '';
+        };
+    };
+
+    const addTogglePrevNextBtnsActive = (emblaApi, prevBtn, nextBtn) => {
+        const togglePrevNextBtnsState = () => {
+            // Check if buttons exist before accessing properties
+            if (prevBtn) {
+                if (emblaApi.canScrollPrev()) prevBtn.removeAttribute('disabled');
+                else prevBtn.setAttribute('disabled', 'disabled');
+            }
+            if (nextBtn) {
+                if (emblaApi.canScrollNext()) nextBtn.removeAttribute('disabled');
+                else nextBtn.setAttribute('disabled', 'disabled');
+            }
+        };
+
+        emblaApi
+            .on('select', togglePrevNextBtnsState)
+            .on('init', togglePrevNextBtnsState)
+            .on('reInit', togglePrevNextBtnsState);
+
+        // Initial state
+        togglePrevNextBtnsState();
+
+        return () => {
+            if (prevBtn) prevBtn.removeAttribute('disabled');
+            if (nextBtn) nextBtn.removeAttribute('disabled');
+        };
+    };
+
+    const addPrevNextBtnsClickHandlers = (emblaApi, prevBtn, nextBtn) => {
+        // Check if buttons exist before adding listeners
+        if (prevBtn) prevBtn.addEventListener('click', emblaApi.scrollPrev, false);
+        if (nextBtn) nextBtn.addEventListener('click', emblaApi.scrollNext, false);
+
+        const removeTogglePrevNextBtnsActive = addTogglePrevNextBtnsActive(
+            emblaApi,
+            prevBtn,
+            nextBtn
+        );
+
+        return () => {
+            removeTogglePrevNextBtnsActive();
+            if (prevBtn) prevBtn.removeEventListener('click', emblaApi.scrollPrev, false);
+            if (nextBtn) nextBtn.removeEventListener('click', emblaApi.scrollNext, false);
+        };
+    };
+
+    // Find the specific carousel elements within this component instance
+    const carouselContainer = document.querySelector('.art-carousel-container');
+    if (carouselContainer) {
+        const emblaNode = carouselContainer.querySelector('.embla');
+        const viewportNode = emblaNode?.querySelector('.embla__viewport');
+        const prevBtnNode = carouselContainer.querySelector('.embla__button--prev');
+        const nextBtnNode = carouselContainer.querySelector('.embla__button--next');
+        const dotsNode = emblaNode?.querySelector('.embla__dots');
+
+        if (viewportNode && prevBtnNode && nextBtnNode && dotsNode) {
+            const emblaApi = EmblaCarousel(viewportNode, { loop: true });
+
+            const removePrevNextBtnsClickHandlers = addPrevNextBtnsClickHandlers(
+                emblaApi,
+                prevBtnNode,
+                nextBtnNode
+            );
+            const removeDotBtnsAndClickHandlers = addDotBtnsAndClickHandlers(
+                emblaApi,
+                dotsNode
+            );
+
+            emblaApi.on('destroy', removePrevNextBtnsClickHandlers);
+            emblaApi.on('destroy', removeDotBtnsAndClickHandlers);
+        } else {
+            console.error('Embla Carousel elements not found within .art-carousel-container');
+        }
+    } else {
+        console.error('.art-carousel-container not found');
+    }
+
+</script> 

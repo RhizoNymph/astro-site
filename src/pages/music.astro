@@ -1,0 +1,27 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+
+<BaseLayout title="My Music">
+    <h1>My Music</h1>
+    <p>
+        <!-- YouTube embeds from original index.html will go here -->
+        <iframe width="560"
+        height="315"
+        src="https://www.youtube.com/embed/IO9Dk887xYg"
+        frameborder="0"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+        allowfullscreen></iframe>
+        <iframe width="560" height="315" src="https://www.youtube.com/embed/YO2XOCHoNrw?si=S8Y8mCeDEOyl67S0" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+        <!-- Add more music embeds or info -->
+    </p>
+</BaseLayout>
+
+<style>
+    /* Style the iframe container if needed */
+    p iframe {
+        display: block; /* Prevent extra space below iframe */
+        margin-bottom: 20px; /* Add space between videos */
+        max-width: 100%; /* Ensure responsiveness */
+    }
+</style> 

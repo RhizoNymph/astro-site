@@ -1,0 +1,72 @@
+---
+// Corrected: All JS/TS code must be within a single pair of fences at the top.
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getCollection } from 'astro:content';
+
+// Fetch blog posts, sorted by date
+const posts = (await getCollection('blog')).sort(
+	(a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf()
+);
+
+// Function to format date
+function formatDate(date: Date): string {
+    return new Date(date).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+    });
+}
+---
+<BaseLayout title="Blog">
+    <h1>Blog</h1>
+    <p>Welcome to my blog! Here I'll share thoughts, updates, and tutorials.</p>
+
+    <h2>Posts:</h2>
+    {posts.length === 0 ? (
+        <p>No blog posts yet. Check back soon!</p>
+    ) : (
+        <ul>
+            {posts.map((post) => (
+                <li>
+                    <a href={`/blog/${post.slug}/`}>{post.data.title}</a>
+                    <p class="post-meta">
+                        <span>Published on {formatDate(post.data.pubDate)}</span>
+                        {post.data.tags && (
+                            <span class="tags"> | Tags: {post.data.tags.join(', ')}</span>
+                        )}
+                    </p>
+                    {post.data.description && <p class="description">{post.data.description}</p>}
+                </li>
+            ))}
+        </ul>
+    )}
+</BaseLayout>
+
+<style>
+    ul {
+        list-style: none;
+        padding: 0;
+    }
+    li {
+        margin-bottom: 1em;
+    }
+    li a {
+        color: #a7d1ff; /* Example link color */
+        text-decoration: none;
+    }
+    li a:hover {
+        text-decoration: underline;
+    }
+    .post-meta {
+        font-size: 0.8em;
+        color: #ccc;
+        margin-top: 0.2em;
+    }
+    .tags {
+        font-style: italic;
+    }
+    .description {
+        margin-top: 0.5em;
+        font-size: 0.9em;
+    }
+</style> 

@@ -1,0 +1,52 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+
+<BaseLayout title="Learning">
+    <h1>Currently Learning & Building</h1>
+
+    <div class="current-info-columns">
+        <div class="column">
+            <h3>Currently studying:</h3>
+            <ul>
+                <li>Linear algebra</li>
+                <li>Category theory</li>
+                <li>Deep learning</li>
+                <li>Linear programming</li>
+                <li>Drone piloting and automation</li>
+            </ul>
+        </div>
+        <div class="column">
+            <h3>Currently building:</h3>
+            <ul>
+                <li>ondora.xyz</li>
+                <li>Information retrieval benchmarks</li>
+                <li>GRPO training for LLMs</li>
+                <li>LLM-assisted information retrieval backend</li>
+                <li>ColBERT based LLM Chat/RAG plugin for Obsidian</li>
+                <li>ComfyUI nodes and custom AI interfaces</li>
+                <li>Tools for managing and labeling data</li>
+            </ul>
+        </div>
+    </div>
+
+</BaseLayout>
+
+<style>
+    .current-info-columns {
+        display: flex;
+        gap: 20px; /* Adjust spacing between columns */
+    }
+    .column {
+        flex: 1; /* Make columns share space equally */
+    }
+    .column h3 {
+        margin-top: 0;
+        border-bottom: 1px solid #444; /* Optional separator */
+        padding-bottom: 5px;
+    }
+    .column ul {
+        padding-left: 20px;
+        margin-top: 10px;
+    }
+</style> 
