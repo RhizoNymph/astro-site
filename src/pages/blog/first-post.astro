@@ -1,35 +1,25 @@
 ---
 // src/pages/blog/first-post.astro
 import BaseLayout from '../../layouts/BaseLayout.astro';
+// Import the Markdown content
+import { Content } from './first-post.md';
 
 const title = "My First Blog Post";
 const pubDate = "2024-03-31";
+const tags = ["astro", "blogging", "webdev"]; // Keep metadata here
 ---
 <BaseLayout title={title}>
     <article class="blog-post">
         <h1>{title}</h1>
         <p class="post-meta">
             <span>Published on {pubDate}</span>
-            {/* Add tags manually if needed */}
-             <span class="tags"> | Tags: astro, blogging, webdev</span>
+            {/* Render tags from frontmatter */}
+            {tags && <span class="tags"> | Tags: {tags.join(', ')}</span>}
         </p>
         <hr>
         <div class="post-content">
-            <p>Welcome to the blog!</p>
-
-            <p>This is my first post on the newly refactored site using Astro. I'm excited to share more thoughts and projects here.</p>
-
-            <h2>Why Astro?</h2>
-
-            <p>I chose Astro because...</p>
-
-            <ul>
-                <li>It's fast!</li>
-                <li>Great Markdown support (though we're bypassing it here).</li>
-                <li>Allows using UI components (React, Vue, etc.) if needed.</li>
-            </ul>
-
-            <p>Stay tuned for more updates!</p>
+            {/* Render the imported Markdown content */}
+            <Content />
         </div>
     </article>
 </BaseLayout>
@@ -72,5 +62,23 @@ const pubDate = "2024-03-31";
         margin-left: 1.5em;
         margin-bottom: 1em;
     }
-    /* Remove code/pre styles if not needed for this post */
+    /* Add back code/pre styles if Markdown might use them */
+    .post-content code {
+        background-color: #3a3a3a;
+        padding: 0.2em 0.4em;
+        border-radius: 3px;
+        font-size: 0.9em;
+    }
+    .post-content pre {
+        background-color: #2a2a2a;
+        padding: 1em;
+        border-radius: 4px;
+        overflow-x: auto;
+        margin-bottom: 1em;
+    }
+    .post-content pre code {
+        background-color: transparent;
+        padding: 0;
+        font-size: inherit;
+    }
 </style> 
