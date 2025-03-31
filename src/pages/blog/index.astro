@@ -1,21 +1,13 @@
 ---
-// Corrected: All JS/TS code must be within a single pair of fences at the top.
+// src/pages/blog/index.astro
+// Simplified for workaround - no content collection fetching
 import BaseLayout from '../../layouts/BaseLayout.astro';
-import { getCollection } from 'astro:content';
 
-// Fetch blog posts, sorted by date
-const posts = (await getCollection('blog')).sort(
-	(a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf()
-);
-
-// Function to format date
-function formatDate(date: Date): string {
-    return new Date(date).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
-    });
-}
+// Manually list blog posts here
+const posts = [
+    { slug: "first-post", title: "My First Blog Post", pubDate: "2024-03-31", description: "Setting up the blog section..." },
+    // Add future posts here
+];
 ---
 <BaseLayout title="Blog">
     <h1>Blog</h1>
@@ -28,14 +20,12 @@ function formatDate(date: Date): string {
         <ul>
             {posts.map((post) => (
                 <li>
-                    <a href={`/blog/${post.slug}/`}>{post.data.title}</a>
+                    {/* Link directly to the .astro page */}
+                    <a href={`/blog/${post.slug}/`}>{post.title}</a>
                     <p class="post-meta">
-                        <span>Published on {formatDate(post.data.pubDate)}</span>
-                        {post.data.tags && (
-                            <span class="tags"> | Tags: {post.data.tags.join(', ')}</span>
-                        )}
+                        <span>Published on {post.pubDate}</span>
                     </p>
-                    {post.data.description && <p class="description">{post.data.description}</p>}
+                    {post.description && <p class="description">{post.description}</p>}
                 </li>
             ))}
         </ul>

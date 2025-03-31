@@ -1,0 +1,76 @@
+---
+// src/pages/blog/first-post.astro
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+const title = "My First Blog Post";
+const pubDate = "2024-03-31";
+---
+<BaseLayout title={title}>
+    <article class="blog-post">
+        <h1>{title}</h1>
+        <p class="post-meta">
+            <span>Published on {pubDate}</span>
+            {/* Add tags manually if needed */}
+             <span class="tags"> | Tags: astro, blogging, webdev</span>
+        </p>
+        <hr>
+        <div class="post-content">
+            <p>Welcome to the blog!</p>
+
+            <p>This is my first post on the newly refactored site using Astro. I'm excited to share more thoughts and projects here.</p>
+
+            <h2>Why Astro?</h2>
+
+            <p>I chose Astro because...</p>
+
+            <ul>
+                <li>It's fast!</li>
+                <li>Great Markdown support (though we're bypassing it here).</li>
+                <li>Allows using UI components (React, Vue, etc.) if needed.</li>
+            </ul>
+
+            <p>Stay tuned for more updates!</p>
+        </div>
+    </article>
+</BaseLayout>
+
+<!-- Reuse styles from the deleted [...slug].astro or define new ones -->
+<style>
+    .blog-post {
+        max-width: 800px;
+        margin: 0 auto;
+    }
+    .post-meta {
+        font-size: 0.9em;
+        color: #ccc;
+        margin-bottom: 1em;
+    }
+    .tags {
+        font-style: italic;
+    }
+    hr {
+        border: 0;
+        height: 1px;
+        background: #444;
+        margin: 1.5em 0;
+    }
+    .post-content {
+        line-height: 1.7;
+    }
+    .post-content h2 {
+        font-size: 1.4em;
+        margin-top: 1.5em;
+        margin-bottom: 0.5em;
+        border-bottom: 1px solid #555;
+        padding-bottom: 0.2em;
+    }
+    .post-content p {
+        margin-bottom: 1em;
+    }
+    .post-content ul, .post-content ol {
+        list-style: initial;
+        margin-left: 1.5em;
+        margin-bottom: 1em;
+    }
+    /* Remove code/pre styles if not needed for this post */
+</style> 
