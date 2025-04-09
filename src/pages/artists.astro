@@ -1,25 +1,149 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+
+// Example data structure - replace with real URLs
+const musicians = [
+    { name: "Brakence", imageUrl: "/artists/brakence.webp", profileUrl: "https://open.spotify.com/album/6XV76W17coHAKFdeyiGT08" },
+    { name: "Deko", imageUrl: "/artists/deko.jpeg", profileUrl: "https://open.spotify.com/album/76V4Qq2dELf00it4F3vw7v" },
+    { name: "Yameii Online", imageUrl: "/artists/yameii.webp", profileUrl: "https://open.spotify.com/album/3EtZk9oPmv7TBzzIVVfvEk" },
+    { name: "Heylog", imageUrl: "/artists/heylog.webp", profileUrl: "https://open.spotify.com/playlist/4KPSaCbOGnw4HfXVEZEchS" },
+    { name: "100 Gecs", imageUrl: "/artists/100gecs.webp", profileUrl: "https://open.spotify.com/album/2XS5McKf3zdJWpcZ4OkZPZ" },
+    { name: "Tyler the Creator", imageUrl: "/artists/tyler.webp", profileUrl: "https://open.spotify.com/album/45ba6QAtNrdv6Ke4MFOKk9" },
+    { name: "JPEGMAFIA", imageUrl: "/artists/jpegmafia.webp", profileUrl: "https://open.spotify.com/album/3STQHyw2nOlIbb1FSgPse8" },
+     { name: "Mac Miller", imageUrl: "/artists/macmiller.jpg", profileUrl: "https://open.spotify.com/album/5wtE5aLX5r7jOosmPhJhhk" },
+     { name: "Benny the Butcher", imageUrl: "/artists/benny.webp", profileUrl: "https://open.spotify.com/album/6xlQNGdro3cCcn8v1ZEGm3" },
+     { name: "Kendrick Lamar", imageUrl: "/artists/kendrick.jpg", profileUrl: "https://open.spotify.com/album/0hvT3yIEysuuvkK73vgdcW" },
+     { name: "Earl Sweatshirt", imageUrl: "/artists/earl.webp", profileUrl: "https://open.spotify.com/album/66at85wgO2pu5CccvqUF6i" },
+     { name: "MIKE", imageUrl: "/artists/mike.webp", profileUrl: "https://open.spotify.com/album/78qkOuif081psiMCkmMo4v" },
+     { name: "The Alchemist", imageUrl: "/artists/alchemist.webp", profileUrl: "https://open.spotify.com/album/44qqs0b21hn7gAsuTioQkT" },
+     { name: "TOKYOPILL", imageUrl: "/artists/tokyopill.webp", profileUrl: "https://open.spotify.com/album/694shnJ19nPnlO9Bc3WEZk" },
+     { name: "Cynthoni", imageUrl: "/artists/cynthoni.jpg", profileUrl: "https://open.spotify.com/album/0eZNqfa1MbB1FQJ0cD6gMD" },
+     { name: "Aphex Twin", imageUrl: "/artists/aphex.webp", profileUrl: "https://open.spotify.com/album/2oJo7cB45gMVuRsaWNwDq2" },
+     { name: "Flume", imageUrl: "/artists/flume.jpg", profileUrl: "https://open.spotify.com/album/0enl6lyotKB8LKlUo5m2oJ" },
+];
+
+const visualArtists = [
+     { name: "photonisdead", imageUrl: "/artists/photonisdead.jpeg", profileUrl: "https://x.com/photonisdead" },
+     { name: "Oseanworld", imageUrl: "/artists/oseanworld.jpg", profileUrl: "https://www.instagram.com/oseanworld/" },
+     { name: "PurzBeats", imageUrl: "/artists/purz.jpg", profileUrl: "https://www.instagram.com/purzbeats/" },     
+     { name: "Machine Delusions", imageUrl: "/artists/machinedelusions.jpg", profileUrl: "https://www.instagram.com/machine.delusions/" },
+     { name: "cerspense", imageUrl: "/artists/cerspense.jpg", profileUrl: "https://x.com/cerspense" },
+     { name: "olegchomp", imageUrl: "/artists/olegchomp.jpg", profileUrl: "https://x.com/oleg__chomp" },
+     { name: "Empress Trash", imageUrl: "/artists/empress.png", profileUrl: "https://x.com/EmpressTrash" },
+     { name: "Minimal Macbeth", imageUrl: "/artists/macbeth.jpg", profileUrl: "https://www.instagram.com/minimal_macbeth/" },
+     { name: "Valeforic", imageUrl: "/artists/valeforic.jpg", profileUrl: "https://x.com/valeforic" },
+];
+
+const countlessMangaka = { 
+    name: "Countless Mangaka and Cartoon Artists", 
+    imageUrl: "/placeholder-artist.png", // Generic placeholder
+    profileUrl: "#" // Perhaps link to a relevant article or leave as #
+};
 ---
 
 <BaseLayout title="Favorite Artists">
     <h1>Who inspires my work?</h1>
     <p>
         I am but a prism directing a combination of the light of those in my lightcone, so I have been inspired by many, many
-        artists. Here I'm going to largely focus on those that have been key to my growth. Over time I will update this with some
-        links to my favorites of each.
+        artists. Here I'm going to largely focus on those that have been key to my growth as an artist and those that have 
+        gotten me through life. Click on the images for links to my favorite works by each artist.
     </p>
-    <p>
-        <b>Musicians:</b><br>
-        Brakence, Deko, Yameii Online, Heylog, 100 Gecs<br>
-        Tyler the Creator, JPEGMAFIA, Mac Miller, Benny the Butcher<br>
-        Kendrick Lamar, Earl Sweatshirt, MIKE, The Alchemist<br>
-        TOKYOPILL, Cynthoni, Aphex Twin, Flume
-    </p>
-    <p>
-        <b>Visual Artists</b>:<br>
-        photonisdead, Deko/Oseanworld, PurzBeats, celestialmaze, Machine Delusions, cersperse,
-        olegchomp, Empress Trash, Minimal Macbeth, Valeforic,
-        countless mangaka and cartoon artists,
-    </p>
-</BaseLayout> 
+    
+    <h2>Musicians</h2>
+    <div class="artist-grid">
+        {musicians.map((artist) => (
+            <a href={artist.profileUrl} class="artist-link" target="_blank" rel="noopener noreferrer">
+                <div class="artist-item">
+                    <div class="artist-card">
+                       <img src={artist.imageUrl} alt={artist.name} class="artist-image"/>
+                    </div>
+                    <div class="artist-name">{artist.name}</div>
+                </div>
+            </a>
+        ))}
+    </div>
+
+    <h2>Visual Artists</h2>
+    <div class="artist-grid">
+        {visualArtists.map((artist) => (
+             <a href={artist.profileUrl} class="artist-link" target="_blank" rel="noopener noreferrer">
+                <div class="artist-item">
+                    <div class="artist-card">
+                         <img src={artist.imageUrl} alt={artist.name} class="artist-image"/>
+                    </div>
+                    <div class="artist-name">{artist.name}</div>
+                </div>
+            </a>
+        ))}
+        <a href={countlessMangaka.profileUrl} class="artist-link" target="_blank" rel="noopener noreferrer">
+            <div class="artist-item"> 
+                <div class="artist-card">
+                    <img src={countlessMangaka.imageUrl} alt={countlessMangaka.name} class="artist-image"/>
+                </div>
+                <div class="artist-name">{countlessMangaka.name}</div>
+            </div>
+        </a>
+    </div>
+
+</BaseLayout>
+
+<style>
+    .artist-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 0.5rem; 
+        margin-bottom: 2rem;
+    }
+
+    .artist-link { /* Style for the link wrapper */
+        text-decoration: none; /* Remove underline from links */
+        color: inherit; /* Inherit text color */
+        display: block; /* Ensure link takes up grid space */
+    }
+
+    .artist-item { 
+        display: flex;
+        flex-direction: column;
+        align-items: center; 
+        transition: transform 0.2s ease-in-out; /* Add subtle hover effect */
+    }
+
+    .artist-link:hover .artist-item { /* Example hover effect */
+        transform: scale(1.03);
+    }
+
+    .artist-card {
+        border: 1px solid #ccc; 
+        padding: 0; /* Remove padding if image fills the card */
+        border-radius: 8px; 
+        text-align: center;
+        background-color: #f9f9f9; 
+        width: 120px; 
+        height: 120px; 
+        display: flex; 
+        justify-content: center; 
+        align-items: center; 
+        margin-bottom: 0.5rem; 
+        overflow: hidden; /* Hide image parts that overflow */
+    }
+
+    .artist-image {
+        max-width: 100%;
+        height: auto;
+        display: block; /* Remove extra space below image */
+        object-fit: cover; /* Cover the card area, cropping if necessary */
+        width: 100%; /* Ensure image tries to fill width */
+        height: 100%; /* Ensure image tries to fill height */
+    }
+
+    .artist-name {
+        font-size: 0.9em;
+        text-align: center;
+        padding: 0 0.25rem; /* Add slight horizontal padding */
+    }
+
+    h2 {
+        margin-top: 2rem; 
+        margin-bottom: 1rem;
+    }
+</style> 

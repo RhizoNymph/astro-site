@@ -2,26 +2,95 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 ---
 
-<BaseLayout title="My Music">
+<BaseLayout title="Music Portfolio">
     <h1>My Music</h1>
-    <p>
-        <!-- YouTube embeds from original index.html will go here -->
-        <iframe width="560"
-        height="315"
-        src="https://www.youtube.com/embed/IO9Dk887xYg"
-        frameborder="0"
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-        allowfullscreen></iframe>
-        <iframe width="560" height="315" src="https://www.youtube.com/embed/YO2XOCHoNrw?si=S8Y8mCeDEOyl67S0" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
-        <!-- Add more music embeds or info -->
-    </p>
+    <div class="video-grid">
+        <iframe 
+            src="https://www.youtube.com/embed/IO9Dk887xYg" 
+            title="YouTube video player" 
+            frameborder="0" 
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+            allowfullscreen></iframe>
+        <iframe 
+            src="https://www.youtube.com/embed/YO2XOCHoNrw?si=S8Y8mCeDEOyl67S0" 
+            title="YouTube video player" 
+            frameborder="0" 
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+            referrerpolicy="strict-origin-when-cross-origin" 
+            allowfullscreen></iframe>
+
+        <iframe
+            src="https://www.youtube.com/embed/zCyPQ_Ao0dc?si=sBeQvW1zA4wnHjY3"
+            title="YouTube video player"
+            frameborder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            referrerpolicy="strict-origin-when-cross-origin"
+            allowfullscreen></iframe>
+
+        <iframe
+            src="https://www.youtube.com/embed/w6NQc2hbI9I?si=BuBBHEPcC6nIZmDb"
+            title="YouTube video player"
+            frameborder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            referrerpolicy="strict-origin-when-cross-origin"
+            allowfullscreen></iframe>
+
+        <iframe
+            src="https://www.youtube.com/embed/B7n3uqUhZf8?si=aNJuCcKwQHIUvJST"
+            title="YouTube video player"
+            frameborder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            referrerpolicy="strict-origin-when-cross-origin"
+            allowfullscreen></iframe>
+
+        <iframe
+            src="https://www.youtube.com/embed/w24KUTj19B0?si=2Ylxc8uHpKz3BaSV"
+            title="YouTube video player"
+            frameborder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            referrerpolicy="strict-origin-when-cross-origin"
+            allowfullscreen></iframe>
+
+        <iframe
+            src="https://www.youtube.com/embed/hGVkHDiRj-8?si=xyeP2vL0IlI8_xO7"
+            title="YouTube video player"
+            frameborder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            referrerpolicy="strict-origin-when-cross-origin"
+            allowfullscreen></iframe>
+
+        <iframe
+            src="https://www.youtube.com/embed/h3wgRa37PcE?si=YaDc2iqoWzEMTSyU"
+            title="YouTube video player"
+            frameborder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            referrerpolicy="strict-origin-when-cross-origin"
+            allowfullscreen></iframe>
+    </div>
 </BaseLayout>
 
 <style>
-    /* Style the iframe container if needed */
-    p iframe {
-        display: block; /* Prevent extra space below iframe */
-        margin-bottom: 20px; /* Add space between videos */
-        max-width: 100%; /* Ensure responsiveness */
+    .video-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 20px;
+        padding: 0;
+    }
+
+    .video-grid iframe, 
+    .video-grid .video-placeholder { 
+        width: 100%;
+        aspect-ratio: 16 / 9;
+        border: none;
+    }
+
+    .video-placeholder {
+        background-color: #333;
+        color: #ccc;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2em;
+        border-radius: 4px;
     }
 </style> 

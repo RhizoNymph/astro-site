@@ -1,0 +1,21 @@
+---
+import { getCollection } from 'astro:content';
+import BlogPost from '../../layouts/BlogPost.astro'; // Import your BlogPost layout
+
+// 1. Generate a page for each blog post
+export async function getStaticPaths() {
+  const posts = await getCollection('blog');
+  return posts.map(post => ({
+    params: { slug: post.slug }, // The slug will be used in the URL
+    props: { post }, // Pass the full post data to the page
+  }));
+}
+
+// 2. Get the post data for the current page from props
+const { post } = Astro.props;
+const { Content } = await post.render(); // Get the rendered Markdown content
+---
+<!-- 3. Render the post using the BlogPost layout -->
+<BlogPost frontmatter={post.data}>
+  <Content /> <!-- Slot the rendered Markdown content into the layout -->
+</BlogPost>

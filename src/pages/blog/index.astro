@@ -2,17 +2,26 @@
 // src/pages/blog/index.astro
 // Simplified for workaround - no content collection fetching
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getCollection } from 'astro:content';
 
-// Manually list blog posts here
-const posts = [
-    { slug: "first-post", title: "My First Blog Post", pubDate: "2024-03-31", description: "Setting up the blog section..." },
-    // Add future posts here
-];
+// Fetch all blog posts, sorted by publication date descending
+const posts = (await getCollection('blog')).sort(
+    (a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf()
+);
+
+// Helper function to format date (optional)
+function formatDate(date) {
+    return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+    });
+}
 ---
 <BaseLayout title="Blog">
     <h1>Blog</h1>
-    <p>Welcome to my blog! Here I'll share thoughts, updates, and tutorials.</p>
-
+    <p>Welcome to my blog! Here I'll share thoughts on the things I'm learning, technical deep dives, project updates, and generally whatever I feel like writing about.</p>
+    <br>
     <h2>Posts:</h2>
     {posts.length === 0 ? (
         <p>No blog posts yet. Check back soon!</p>
@@ -20,12 +29,14 @@ const posts = [
         <ul>
             {posts.map((post) => (
                 <li>
-                    {/* Link directly to the .astro page */}
-                    <a href={`/blog/${post.slug}/`}>{post.title}</a>
+                    {/* Link uses the post's slug */}
+                    <a href={`/blog/${post.slug}/`}>{post.data.title}</a>
                     <p class="post-meta">
-                        <span>Published on {post.pubDate}</span>
+                        {/* Access frontmatter via post.data */}
+                        <span>Published on {formatDate(post.data.pubDate)}</span>
                     </p>
-                    {post.description && <p class="description">{post.description}</p>}
+                    {/* Access frontmatter via post.data */}
+                    {post.data.description && <p class="description">{post.data.description}</p>}
                 </li>
             ))}
         </ul>
@@ -43,6 +54,7 @@ const posts = [
     li a {
         color: #a7d1ff; /* Example link color */
         text-decoration: none;
+        font-size: 1.2em; /* Make title slightly larger */
     }
     li a:hover {
         text-decoration: underline;

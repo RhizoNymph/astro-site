@@ -1,0 +1,41 @@
+---
+import BaseLayout from './BaseLayout.astro';
+
+const { frontmatter } = Astro.props;
+---
+<BaseLayout title={frontmatter.title || "Blog Post"}>
+    <article class="blog-post">
+        <slot />
+    </article>
+</BaseLayout>
+
+<style>
+    .blog-post {
+        line-height: 1.6;
+    }
+
+    .blog-post :global(h1) {
+        margin-bottom: 1em;
+        font-size: 2em;
+    }
+
+    .blog-post :global(h2) {
+        margin-top: 1em;
+        margin-bottom: 1em;
+        font-size: 1.5em;
+    }
+
+    .blog-post :global(p) {
+        margin: 0;
+    }
+
+    .blog-post :global(ul) {
+        margin: 1em 0;
+        padding-left: 2em;
+        list-style-type: disc;
+    }
+
+    .blog-post :global(li) {
+        margin: 0.5em 0;
+    }
+</style>

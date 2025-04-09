@@ -32,21 +32,46 @@ const { title } = Astro.props;
     <div class="container">
         <aside class="sidebar">
             <!-- Persistent Navigation Links will go here -->
+            <!-- Profile Pic will go here -->
+            <div class="profile-pic-container">
+                 <img src="https://avatars.githubusercontent.com/u/82485126?s=400&u=c7c677bcb0633a255e0da7a4e97165d8cfba745b&v=4" alt="Profile Picture" class="profile-pic">
+            </div>
             <nav class="main-nav">
                 <ul>
                     <li><a href="/">Bio</a></li>
                     <li><a href="/blog/">Blog</a></li>
-                    <li><a href="/portfolio/">Portfolio</a></li>
-                    <li><a href="/art/">My Art</a></li>
-                    <li><a href="/learning/">Learning</a></li>
-                    <li><a href="/music/">My Music</a></li>
+                    <li><a href="/portfolio/">Code Portfolio</a></li>
+                    <li><a href="/art/">Art Portfolio</a></li>
+                    <li><a href="/music/">Music Portfolio</a></li>
                     <li><a href="/artists/">Favorite Artists</a></li>
                 </ul>
             </nav>
-            <!-- Profile Pic will go here -->
-            <div class="profile-pic-container">
-                 <img src="https://avatars.githubusercontent.com/u/82485126?s=400&u=509be5fe507d70ed0e9d7baf04f6a77e94de4a09&v=4" alt="Profile Picture" class="profile-pic">
+            {/* Learning Content Added Here */}
+            <h3>Currently Learning & Building</h3>
+            <div class="current-info-columns">
+                <div class="column">
+                    <h4>Currently studying:</h4>
+                    <ul>
+                        <li>Linear algebra</li>
+                        <li>Category theory</li>
+                        <li>Deep learning</li>
+                        <li>Linear programming</li>
+                        <li>Drone piloting and automation</li>
+                    </ul>
+                </div>
+                <div class="column">
+                    <h4>Currently building:</h4>
+                    <ul>
+                        <li>ondora.xyz</li>
+                        <li>Information retrieval benchmarks</li>
+                        <li>GRPO training for LLMs</li>
+                        <li>LLM-assisted information retrieval backend</li>
+                        <li>ColBERT based LLM Chat/RAG plugin for Obsidian</li>
+                        <li>ComfyUI nodes and custom AI interfaces</li>
+                    </ul>
+                </div>
             </div>
+            {/* End Learning Content */}
         </aside>
         <main>
             <!-- Page-specific content will be injected here -->
@@ -82,15 +107,13 @@ const { title } = Astro.props;
     .container {
         display: flex;
         flex-grow: 1;
-        max-width: 1200px; /* Adjust as needed */
         width: 100%;
-        margin: 0 auto; /* Center the container */
         padding: 20px;
         gap: 20px; /* Space between sidebar and main content */
     }
 
     .sidebar {
-        width: 250px; /* Adjust width as needed */
+        width: 400px;
         flex-shrink: 0; /* Prevent sidebar from shrinking */
         padding: 15px;
         background-color: #2a2a2a; /* Slightly different background */
@@ -117,10 +140,13 @@ const { title } = Astro.props;
         padding: 0;
         margin: 0;
         width: 100%; /* Make nav take full width of sidebar */
+        display: grid; /* Use grid layout */
+        grid-template-columns: repeat(2, 1fr); /* Two equal columns */
+        gap: 5px; /* Space between grid items */
     }
 
     .main-nav li {
-        margin-bottom: 10px;
+        /* margin-bottom removed, handled by gap */
     }
 
     .main-nav a {
@@ -131,6 +157,7 @@ const { title } = Astro.props;
         padding: 8px 15px; /* Add some padding */
         border-radius: 4px;
         transition: background-color 0.3s ease;
+        text-align: center; /* Center text in grid cell */
     }
 
     .main-nav a:hover,
@@ -182,4 +209,61 @@ const { title } = Astro.props;
          vertical-align: middle;
          fill: currentColor; /* Ensure it uses the link color */
      }
+
+    /* Styles for learning section in sidebar */
+    .sidebar h3 { /* Style for the main "Currently Learning..." heading */
+        margin-top: 20px; /* Add space above the heading */
+        margin-bottom: 15px;
+        border-bottom: 1px solid #444;
+        padding-bottom: 5px;
+        width: 100%; /* Make it take full width */
+        text-align: center; /* Center the heading */
+        font-size: 1.1em; /* Adjust size if needed */
+    }
+
+    .current-info-columns {
+        display: flex;
+        flex-direction: column; /* Stack columns vertically in the sidebar */
+        gap: 15px; /* Adjust spacing between sections */
+        width: 100%; /* Take full width */
+        margin-top: 10px;
+        text-align: left; /* Align text to the left */
+    }
+
+    .column {
+        flex: 1;
+    }
+
+    .column h4 { /* Style for "Studying" and "Building" subheadings */
+        margin-top: 0;
+        margin-bottom: 8px;
+        /* border-bottom: 1px solid #444; */ /* Maybe remove border for subheadings */
+        /* padding-bottom: 5px; */
+        font-size: 1em; /* Adjust size */
+        color: #ccc; /* Lighter color for subheading */
+        font-weight: bold;
+    }
+
+    .column ul {
+        padding-left: 5px; /* Reduce indentation */
+        margin-top: 5px;
+        list-style: none; /* Remove default bullets */
+        /* list-style-type: '- '; /* Use dash for list items - browser support varies */
+        font-size: 0.9em; /* Smaller font size for list items */
+    }
+
+     .column li {
+         margin-bottom: 4px; /* Space between list items */
+         padding-left: 10px; /* Indent list items */
+         position: relative; /* For pseudo-element positioning */
+     }
+
+     /* Add custom bullet using pseudo-element */
+    .column li::before {
+        content: '-';
+        position: absolute;
+        left: 0;
+        color: #ccc; /* Match subheading color or choose another */
+    }
+
 </style> 
