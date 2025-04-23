@@ -168,6 +168,8 @@ const { title } = Astro.props;
 
     main {
         flex-grow: 1; /* Allow main content to take remaining space */
+        min-width: 0; /* Crucial for allowing flex items to shrink below content size */
+        overflow-x: hidden; /* Prevent main content from causing horizontal scroll */
         background-color: #2a2a2a; /* Match sidebar or use a different shade */
         padding: 20px;
         border-radius: 5px;
