@@ -1,11 +1,113 @@
 ---
 // src/pages/portfolio.astro
 import BaseLayout from '../layouts/BaseLayout.astro';
+
+// Define the list of repositories to fetch (owner/name)
+const repoIdentifiers = [
+  { owner: 'RhizoNymph', name: 'kpe-bench' },
+  { owner: 'RhizoNymph', name: 'InformationAgency' },
+  { owner: 'RhizoNymph', name: 'import-indexer' },
+  { owner: 'RhizoNymph', name: 'ComfyUI-ClipSlider' },
+  { owner: 'RhizoNymph', name: 'sample-space' },   
+  { owner: 'RhizoNymph', name: 'prediction-arbs' },
+  { owner: 'RhizoNymph', name: 'ssm-gradio' },
+];
+
+// Fetch data for each repository from the GitHub API
+const repoDataPromises = repoIdentifiers.map(async ({ owner, name }) => {
+  try {
+    const response = await fetch(`https://api.github.com/repos/${owner}/${name}`);
+    if (!response.ok) {
+      // Handle potential errors like 404 Not Found or rate limiting
+      console.error(`Failed to fetch ${owner}/${name}: ${response.status} ${response.statusText}`);
+      const errorBody = await response.text(); // Read error body for more details
+      console.error(`Error body: ${errorBody}`);
+      return null; // Return null for failed fetches
+    }
+    const data = await response.json();
+    // Extract the needed information
+    return {
+      name: data.name,
+      owner: data.owner.login,
+      description: data.description,
+      url: data.html_url,
+      stars: data.stargazers_count,
+      forks: data.forks_count,
+    };
+  } catch (error) {
+    console.error(`Error fetching ${owner}/${name}:`, error);
+    return null; // Return null on network or other errors
+  }
+});
+
+// Wait for all fetches to complete and filter out any null results (failed fetches)
+const repos = (await Promise.all(repoDataPromises)).filter(repo => repo !== null);
+
 ---
 <BaseLayout title="Portfolio">
     <h1>My Portfolio</h1>
-    <p>
-        This section is under construction. Come back soon to see examples of my work!
-        <!-- Add portfolio items here later -->
-    </p>
+    <p>Here are some of the public repositories I've created or contributed to:</p>
+    {repos.length === 0 && repoIdentifiers.length > 0 && (
+        <p style="color: red;">Could not fetch repository data. Check the browser console or server logs for errors (potential rate limiting or incorrect repo names).</p>
+    )}
+    <div class="repo-cards-container">
+        {repos.map(repo => (
+            <div class="repo-card">
+                <h3><a href={repo.url} target="_blank" rel="noopener noreferrer">{repo.owner}/{repo.name}</a></h3>
+                <p>{repo.description || 'No description available.'}</p>
+                <div class="repo-stats">
+                    <span>⭐ {repo.stars} Stars</span>
+                    <span>🍴 {repo.forks} Forks</span>
+                </div>
+            </div>
+        ))}
+    </div>
+    <style>
+        .repo-cards-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+        .repo-card {
+            border: 1px solid #555; /* Darker border */
+            padding: 1rem;
+            border-radius: 8px;
+            background-color: #2d2d2d; /* Dark background */
+            color: #e0e0e0; /* Light text color for the card */
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        .repo-card:hover {
+             transform: translateY(-5px);
+             box-shadow: 0 6px 12px rgba(0,0,0,0.15); /* Enhanced shadow on hover */
+        }
+        .repo-card h3 {
+            margin-top: 0; /* Remove default margin */
+            margin-bottom: 0.5rem; /* Add space below heading */
+        }
+        .repo-card h3 a {
+            color: #58a6ff; /* Brighter blue for links in dark mode */
+            text-decoration: none;
+        }
+        .repo-card h3 a:hover {
+            text-decoration: underline;
+        }
+         .repo-card p {
+            flex-grow: 1;
+            margin-bottom: 1rem;
+             /* Inherits light text color from .repo-card */
+        }
+        .repo-stats {
+            margin-top: auto;
+            font-size: 0.9em;
+            color: #a0a0a0; /* Lighter grey for stats text */
+            display: flex;
+            gap: 1rem;
+            border-top: 1px solid #444; /* Darker separator */
+            padding-top: 0.75rem;
+        }
+    </style>
 </BaseLayout> 

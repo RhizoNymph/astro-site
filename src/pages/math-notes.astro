@@ -1,0 +1,113 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import ImagePreview from '../components/ImagePreview.astro';
+
+const pageTitle = "Math Notes";
+
+const categoryTheoryImages = [
+    {
+        title: "1-MotivationAndPhilosophy.jpg",
+        url: "https://raw.githubusercontent.com/RhizoNymph/math-notes/main/Category%20Theory/1-MotivationAndPhilosophy.jpg"
+    },
+    {
+        title: "2-WhatIsACategory1.jpg",
+        url: "https://raw.githubusercontent.com/RhizoNymph/math-notes/main/Category%20Theory/2-WhatIsACategory1.jpg"
+    },
+    {
+        title: "3-WhatIsACategory2AndFunctions+Epimorphisms1.jpg",
+        url: "https://raw.githubusercontent.com/RhizoNymph/math-notes/main/Category%20Theory/3-WhatIsACategory2AndFunctions%2BEpimorphisms1.jpg"
+    },
+    {
+        title: "4-FunctionsAndEpimorphisms2.jpg",
+        url: "https://raw.githubusercontent.com/RhizoNymph/math-notes/main/Category%20Theory/4-FunctionsAndEpimorphisms2.jpg"
+    },
+    {
+        title: "5-FunctionsAndEpimoprhisms3AndMonomorphisms1.jpg",
+        url: "https://raw.githubusercontent.com/RhizoNymph/math-notes/main/Category%20Theory/5-FunctionsAndEpimoprhisms3AndMonomorphisms1.jpg"
+    },
+    {
+        title: "6-SimpleTypes2.jpg",
+        url: "https://raw.githubusercontent.com/RhizoNymph/math-notes/main/Category%20Theory/6-SimpleTypes2.jpg"
+    }
+];
+---
+<BaseLayout title={pageTitle}>
+    <h1>{pageTitle}</h1>
+    <p>Here are some notes on various mathematical topics I'm studying.</p>
+
+    <section id="linear-algebra">
+        <h2>Linear Algebra</h2>
+        <p>Notes on linear algebra will go here...</p>
+        <!-- Add your linear algebra content -->
+    </section>
+
+    <section id="category-theory">
+        <h2>Category Theory</h2>
+        <p>Notes on category theory:</p>
+        <div class="image-grid">
+            {categoryTheoryImages.map(image => (
+                <ImagePreview src={image.url} title={image.title} />
+            ))}
+        </div>
+        <!-- Add your category theory content -->
+    </section>
+
+    <section id="reinforcement-learning">
+        <h2>Reinforcement Learning</h2>
+        <p>Notes on reinforcement learning will go here...</p>
+        <!-- Add your reinforcement learning content -->
+    </section>
+
+</BaseLayout>
+
+<style>
+    /* Add any page-specific styles here */
+    h1, h2 {
+        color: #e0e0e0; /* Lighter headings */
+        border-bottom: 1px solid #444;
+        padding-bottom: 5px;
+        margin-top: 20px;
+        margin-bottom: 30px;
+    }
+
+    section {
+        margin-bottom: 30px;
+    }
+
+    p {
+        line-height: 1.6;
+    }
+
+    .image-grid {
+        display: flex;
+        flex-wrap: nowrap; /* Prevent wrapping to multiple lines */
+        overflow-x: auto;  /* Enable horizontal scrolling */
+        overflow-y: hidden; /* Hide vertical scrollbar */
+        padding-bottom: 15px; /* Add space for scrollbar */
+        gap: 15px; /* Space between items */
+        margin-top: 15px;
+        /* Optional: Add scrollbar styling for webkit browsers */
+        scrollbar-width: thin; /* Firefox */
+        scrollbar-color: #555 #333; /* Firefox: thumb track */
+    }
+
+    /* Style scrollbar for WebKit browsers */
+    .image-grid::-webkit-scrollbar {
+        height: 8px;
+    }
+    .image-grid::-webkit-scrollbar-track {
+        background: #333;
+        border-radius: 4px;
+    }
+    .image-grid::-webkit-scrollbar-thumb {
+        background-color: #555;
+        border-radius: 4px;
+        border: 2px solid #333; /* Creates padding around thumb */
+    }
+
+    /* Ensure items in the flex row don't shrink */
+    .image-grid > :global(.image-preview-container) { /* Target direct children */
+        flex-shrink: 0;
+        width: 220px; /* Give items a fixed width matching the old minmax */
+    }
+</style>

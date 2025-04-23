@@ -1,0 +1,204 @@
+---
+// src/components/ImagePreview.astro
+interface Props {
+  src: string;
+  title: string;
+  alt?: string;
+}
+
+const { src, title, alt = title } = Astro.props;
+
+// Generate a unique ID for this preview instance
+const uniqueId = `modal-${crypto.randomUUID()}`;
+---
+
+<div class="image-preview-container">
+  <p class="image-title">{title}</p>
+  <button type="button" class="preview-trigger" aria-controls={uniqueId} aria-expanded="false" data-modal-target={`#${uniqueId}`}>
+    <img src={src} alt={`Preview of ${alt}`} loading="lazy" class="preview-image">
+    <span class="expand-indicator">Click to expand</span>
+  </button>
+</div>
+
+<!-- Modal structure (hidden by default) -->
+<div class="modal-overlay" id={uniqueId} style="display: none;" data-modal-overlay>
+  <div class="modal-content">
+    <img src={src} alt={alt} loading="lazy" class="full-image">
+    <button type="button" class="close-button" aria-label="Close image">&times;</button>
+  </div>
+</div>
+
+<style>
+.image-preview-container {
+  border: 1px solid #444;
+  padding: 10px;
+  margin-bottom: 15px;
+  border-radius: 4px;
+  background-color: #333;
+  text-align: center; /* Center trigger button */
+}
+
+.image-title {
+  font-weight: bold;
+  margin-bottom: 8px;
+  font-size: 0.9em;
+  color: #ccc;
+  text-align: center;
+}
+
+.preview-trigger {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  display: inline-block; /* Make it inline-block for centering */
+  text-align: center;
+}
+
+.preview-trigger:focus {
+  outline: 2px solid skyblue; /* Accessibility */
+}
+
+.preview-image {
+  max-width: 200px;
+  max-height: 150px;
+  display: block;
+  margin: 0 auto 5px auto;
+  border: 1px solid #555;
+}
+
+.expand-indicator {
+  font-size: 0.8em;
+  color: #aaa;
+  display: block;
+}
+
+/* Modal styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.85); /* Darker overlay */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  cursor: pointer; /* Allow clicking overlay to close */
+  padding: 20px; /* Add some padding */
+  box-sizing: border-box;
+}
+
+.modal-content {
+  position: relative;
+  max-width: 95%;
+  max-height: 95vh;
+  cursor: default; /* Prevent closing when clicking image itself */
+  display: flex; /* Use flex to help center image if needed */
+  justify-content: center;
+  align-items: center;
+}
+
+.full-image {
+  display: block;
+  max-width: 100%;
+  max-height: 90vh; /* Limit height slightly more */
+  object-fit: contain; /* Ensure image fits without distortion */
+  border: 2px solid #fff; /* Optional border */
+  box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+}
+
+.close-button {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  background-color: #333;
+  color: white;
+  border: 1px solid white;
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  font-size: 20px;
+  line-height: 28px;
+  text-align: center;
+  cursor: pointer;
+  z-index: 1001;
+}
+</style>
+
+<script>
+  // Function to find the modal element associated with a trigger
+  function getModalFromTrigger(trigger: HTMLButtonElement): HTMLElement | null {
+      const modalId = trigger.getAttribute('data-modal-target');
+      return modalId ? document.querySelector(modalId) : null;
+  }
+
+  // Function to find the trigger associated with a modal
+  function getTriggerFromModal(modal: HTMLElement): HTMLButtonElement | null {
+      const triggerSelector = `[data-modal-target="#${modal.id}"]`;
+      return document.querySelector(triggerSelector);
+  }
+
+  // Function to open the modal
+  function openModal(modal: HTMLElement, trigger: HTMLButtonElement) {
+      if (!modal || modal.parentElement === document.body) return; // Already open or modal not found
+      // Append to body to ensure viewport positioning
+      document.body.appendChild(modal);
+      modal.style.display = 'flex';
+      trigger.setAttribute('aria-expanded', 'true');
+      // Optional: Trap focus inside the modal (more advanced accessibility)
+  }
+
+  // Function to close the modal
+  function closeModal(modal: HTMLElement) {
+      if (!modal || modal.parentElement !== document.body) return; // Already closed or not in body
+      const trigger = getTriggerFromModal(modal);
+      modal.style.display = 'none';
+      // Move modal back to its original place in the DOM (optional, but cleaner)
+      const originalContainer = trigger?.closest('.image-preview-container');
+      originalContainer?.parentNode?.insertBefore(modal, originalContainer.nextSibling);
+      // If you don't want to move it back, just remove it:
+      // document.body.removeChild(modal);
+
+      if (trigger) {
+          trigger.setAttribute('aria-expanded', 'false');
+          // Optional: Return focus to the trigger
+          trigger.focus();
+      }
+  }
+
+  document.addEventListener('click', (event) => {
+    const target = event.target as HTMLElement;
+
+    // --- Handle Opening Modals ---
+    const trigger = target.closest('.preview-trigger') as HTMLButtonElement | null;
+    if (trigger) {
+      const modal = getModalFromTrigger(trigger);
+      if (modal) {
+         openModal(modal, trigger);
+      }
+      return; // Prevent closing immediately
+    }
+
+    // --- Handle Closing Modals ---
+    const overlay = target.closest('[data-modal-overlay]') as HTMLElement | null;
+    const closeButton = target.closest('.close-button') as HTMLButtonElement | null;
+
+    // Close only if clicking overlay directly or the close button
+    if (overlay && (target === overlay || closeButton)) {
+        closeModal(overlay);
+    }
+  });
+
+  // Close modal on Escape key press
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      // Find the *single* currently open modal (assuming only one opens at a time)
+      const openModalElement = document.querySelector('[data-modal-overlay][style*="display: flex"]');
+      if (openModalElement && openModalElement.parentElement === document.body) {
+          closeModal(openModalElement as HTMLElement);
+      }
+    }
+  });
+</script> 
