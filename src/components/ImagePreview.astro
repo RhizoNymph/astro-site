@@ -43,7 +43,12 @@ const uniqueId = `modal-${crypto.randomUUID()}`;
   margin-bottom: 8px;
   font-size: 0.9em;
   color: #ccc;
-  text-align: center;
+  /* text-align: center; */ /* Temporarily remove centering */
+  /* --- Adjustments for text wrapping --- */
+  width: 100%; /* Ensure title respects container width */
+  white-space: normal; /* Allow wrapping */
+  overflow-wrap: break-word; /* Standard word breaking */
+  word-break: break-all; /* Force break for long words/filenames */
 }
 
 .preview-trigger {
