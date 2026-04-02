@@ -4,13 +4,10 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 
 // Define the list of repositories to fetch (owner/name)
 const repoIdentifiers = [
-  { owner: 'RhizoNymph', name: 'kpe-bench' },
-  { owner: 'RhizoNymph', name: 'InformationAgency' },
-  { owner: 'RhizoNymph', name: 'import-indexer' },
-  { owner: 'RhizoNymph', name: 'ComfyUI-ClipSlider' },
-  { owner: 'RhizoNymph', name: 'sample-space' },   
-  { owner: 'RhizoNymph', name: 'prediction-arbs' },
-  { owner: 'RhizoNymph', name: 'ssm-gradio' },
+  { owner: 'RhizoNymph', name: 'vLLM' },
+  { owner: 'RhizoNymph', name: 'prime-perf' },
+  { owner: 'whetstoneresearch', name: 'doppler-indexer-rs' }
+
 ];
 
 // Fetch data for each repository from the GitHub API
@@ -110,4 +107,4 @@ const repos = (await Promise.all(repoDataPromises)).filter(repo => repo !== null
             padding-top: 0.75rem;
         }
     </style>
-</BaseLayout> 
+</BaseLayout>
