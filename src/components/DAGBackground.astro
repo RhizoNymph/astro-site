@@ -1,7 +1,6 @@
 <div id="dag-bg">
   <div id="dag-fade">
-    <svg id="dag-svg" viewBox="0 0 960 600" width="100%" height="100%"
-      preserveAspectRatio="xMidYMid slice" style="display:block">
+    <svg id="dag-svg" width="100%" height="100%" style="display:block">
       <defs>
         <filter id="g1"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
         <filter id="g2"><feGaussianBlur stdDeviation="6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
@@ -41,7 +40,14 @@
   const HOLD_MS = 2200;
   const FADE_MS = 900;
   const BLANK_MS = 400;
-  const W = 960, H = 600, PAD = 60, NODE_R = 20;
+  const PAD = 80, NODE_R = 20;
+
+  // Size the viewBox to match the container
+  const container = document.getElementById("dag-bg");
+  const svg = document.getElementById("dag-svg");
+  let W = container.clientWidth || 960;
+  let H = container.clientHeight || 600;
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
   const P = {
     bg: "#060a10", node: "#0a1220", stroke: "#3399ff",
     accent: "#62a0ea", edge: "#813d9c", critical: "#dc8add",
@@ -76,8 +82,7 @@
       for (let i = 0; i < count; i++) {
         const layerT = actual.length === 1 ? 0.5 : li / (actual.length - 1);
         const slotT = count === 1 ? 0.5 : i / (count - 1);
-        const rawY = PAD + layerT * (H - PAD * 2);
-        const y = H - rawY + PAD + (rng() - 0.5) * 25;
+        const y = H - PAD - layerT * (H - PAD * 2) + (rng() - 0.5) * 25;
         const x = PAD + slotT * (W - PAD * 2) + (rng() - 0.5) * 28;
         nodes.push({ id: id++, layer: li, x, y });
       }
@@ -137,7 +142,13 @@
   }
 
   function sleep(ms) {
-    return new Promise(r => setTimeout(r, ms));
+    return new Promise(r => {
+      const id = setTimeout(r, ms);
+      const check = setInterval(() => {
+        if (cancelled) { clearTimeout(id); clearInterval(check); r(); }
+      }, 50);
+      setTimeout(() => clearInterval(check), ms + 10);
+    });
   }
 
   const fadeEl = document.getElementById("dag-fade");
@@ -145,16 +156,44 @@
   const edgesG = document.getElementById("dag-edges");
   const nodesG = document.getElementById("dag-nodes");
 
-  // Draw grid dots once
-  for (let i = 0; i < 24; i++) {
-    for (let j = 0; j < 15; j++) {
+  // Draw grid dots based on actual size
+  const gridCols = Math.ceil(W / 40);
+  const gridRows = Math.ceil(H / 40);
+  for (let i = 0; i < gridCols; i++) {
+    for (let j = 0; j < gridRows; j++) {
       gridG.appendChild(el("circle", {
         cx: i * 40 + 20, cy: j * 40 + 20, r: 0.5, fill: P.edge, opacity: 0.15,
       }));
     }
   }
 
+  function updateSize() {
+    W = container.clientWidth || 960;
+    H = container.clientHeight || 600;
+    svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+    gridG.innerHTML = "";
+    const cols = Math.ceil(W / 40);
+    const rows = Math.ceil(H / 40);
+    for (let i = 0; i < cols; i++) {
+      for (let j = 0; j < rows; j++) {
+        gridG.appendChild(el("circle", {
+          cx: i * 40 + 20, cy: j * 40 + 20, r: 0.5, fill: P.edge, opacity: 0.15,
+        }));
+      }
+    }
+  }
+
   let cancelled = false;
+  let resizeTimer;
+  window.addEventListener("resize", () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+      cancelled = true;
+      updateSize();
+      cancelled = false;
+      runLoop();
+    }, 200);
+  });
 
   function renderDAG(dag) {
     const nodeMap = {};
