@@ -1,0 +1,334 @@
+<div id="dag-bg">
+  <div id="dag-fade">
+    <svg id="dag-svg" viewBox="0 0 960 600" width="100%" height="100%"
+      preserveAspectRatio="xMidYMid slice" style="display:block">
+      <defs>
+        <filter id="g1"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        <filter id="g2"><feGaussianBlur stdDeviation="6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        <filter id="g3"><feGaussianBlur stdDeviation="12" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        <marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+          <path d="M 0 1 L 10 5 L 0 9 z" fill="#62a0ea" opacity="0.4"/>
+        </marker>
+        <marker id="arrC" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M 0 1 L 10 5 L 0 9 z" fill="#dc8add" opacity="0.8"/>
+        </marker>
+        <marker id="arrW" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+          <path d="M 0 1 L 10 5 L 0 9 z" fill="#62a0ea" opacity="0.6"/>
+        </marker>
+      </defs>
+      <g id="dag-grid"></g>
+      <g id="dag-edges"></g>
+      <g id="dag-nodes"></g>
+    </svg>
+  </div>
+</div>
+
+<style>
+  #dag-bg {
+    width: 100%; height: 100%;
+    background: #060a10;
+    overflow: hidden;
+    position: relative;
+  }
+  #dag-fade {
+    width: 100%; height: 100%;
+    transition: opacity 900ms ease-in-out;
+  }
+</style>
+
+<script>
+  const WALK_SPEED = 800;
+  const HOLD_MS = 2200;
+  const FADE_MS = 900;
+  const BLANK_MS = 400;
+  const W = 960, H = 600, PAD = 60, NODE_R = 20;
+  const P = {
+    bg: "#060a10", node: "#0a1220", stroke: "#3399ff",
+    accent: "#62a0ea", edge: "#813d9c", critical: "#dc8add",
+  };
+  const SVG_NS = "http://www.w3.org/2000/svg";
+
+  function mulberry32(a) {
+    return () => {
+      a |= 0; a = (a + 0x6d2b79f5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  function generateDAG(nodeCount, edgeDensity, seed) {
+    const rng = mulberry32(seed);
+    const nodes = [], edges = [];
+    const layers = Math.max(3, Math.ceil(Math.sqrt(nodeCount) * 1.4));
+    const perLayer = [];
+    let rem = nodeCount;
+    for (let i = 0; i < layers; i++) {
+      const avg = rem / (layers - i);
+      const c = i === layers - 1 ? rem : Math.max(1, Math.round(avg + (rng() - 0.5) * avg * 0.6));
+      perLayer.push(Math.min(c, rem));
+      rem -= perLayer[i];
+      if (rem <= 0) break;
+    }
+    const actual = perLayer.filter(c => c > 0);
+    let id = 0;
+    actual.forEach((count, li) => {
+      for (let i = 0; i < count; i++) {
+        const layerT = actual.length === 1 ? 0.5 : li / (actual.length - 1);
+        const slotT = count === 1 ? 0.5 : i / (count - 1);
+        const rawY = PAD + layerT * (H - PAD * 2);
+        const y = H - rawY + PAD + (rng() - 0.5) * 25;
+        const x = PAD + slotT * (W - PAD * 2) + (rng() - 0.5) * 28;
+        nodes.push({ id: id++, layer: li, x, y });
+      }
+    });
+    for (let i = 0; i < nodes.length; i++) {
+      for (let j = i + 1; j < nodes.length; j++) {
+        if (nodes[i].layer < nodes[j].layer && rng() < edgeDensity) {
+          edges.push({ from: nodes[i].id, to: nodes[j].id });
+        }
+      }
+    }
+    const hasParent = new Set();
+    edges.forEach(e => hasParent.add(e.to));
+    nodes.forEach(n => {
+      if (n.layer > 0 && !hasParent.has(n.id)) {
+        const cands = nodes.filter(c => c.layer < n.layer);
+        if (cands.length) {
+          const p = cands[Math.floor(rng() * cands.length)];
+          edges.push({ from: p.id, to: n.id });
+        }
+      }
+    });
+    return { nodes, edges };
+  }
+
+  function topoSort(nodes, edges) {
+    const adj = {}, inD = {};
+    nodes.forEach(n => { adj[n.id] = []; inD[n.id] = 0; });
+    edges.forEach(e => { adj[e.from].push(e.to); inD[e.to]++; });
+    const q = nodes.filter(n => inD[n.id] === 0).map(n => n.id);
+    const order = [];
+    while (q.length) {
+      q.sort((a, b) => a - b);
+      const u = q.shift();
+      order.push(u);
+      for (const v of adj[u]) { inD[v]--; if (inD[v] === 0) q.push(v); }
+    }
+    return order;
+  }
+
+  function bezierPath(x1, y1, x2, y2) {
+    const dx = x2 - x1, dy = y2 - y1;
+    if (Math.abs(dx) > Math.abs(dy)) {
+      return `M ${x1} ${y1} C ${x1 + dx * 0.4} ${y1}, ${x1 + dx * 0.6} ${y2}, ${x2} ${y2}`;
+    }
+    return `M ${x1} ${y1} C ${x1} ${y1 + dy * 0.4}, ${x2} ${y1 + dy * 0.6}, ${x2} ${y2}`;
+  }
+
+  function randRange(lo, hi) {
+    return lo + Math.floor(Math.random() * (hi - lo + 1));
+  }
+
+  function el(tag, attrs) {
+    const e = document.createElementNS(SVG_NS, tag);
+    for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, String(v));
+    return e;
+  }
+
+  function sleep(ms) {
+    return new Promise(r => setTimeout(r, ms));
+  }
+
+  const fadeEl = document.getElementById("dag-fade");
+  const gridG = document.getElementById("dag-grid");
+  const edgesG = document.getElementById("dag-edges");
+  const nodesG = document.getElementById("dag-nodes");
+
+  // Draw grid dots once
+  for (let i = 0; i < 24; i++) {
+    for (let j = 0; j < 15; j++) {
+      gridG.appendChild(el("circle", {
+        cx: i * 40 + 20, cy: j * 40 + 20, r: 0.5, fill: P.edge, opacity: 0.15,
+      }));
+    }
+  }
+
+  let cancelled = false;
+
+  function renderDAG(dag) {
+    const nodeMap = {};
+    dag.nodes.forEach(n => nodeMap[n.id] = n);
+
+    edgesG.innerHTML = "";
+    nodesG.innerHTML = "";
+
+    const edgeEls = dag.edges.map((e) => {
+      const from = nodeMap[e.from], to = nodeMap[e.to];
+      const dx = to.x - from.x, dy = to.y - from.y;
+      const d = Math.sqrt(dx * dx + dy * dy) || 1;
+      const ox = (dx / d) * NODE_R, oy = (dy / d) * NODE_R;
+      const path = el("path", {
+        d: bezierPath(from.x + ox, from.y + oy, to.x - ox, to.y - oy),
+        fill: "none", stroke: P.edge, "stroke-width": 0.7,
+        opacity: 0.1, "marker-end": "url(#arr)", filter: "none",
+        style: "transition: opacity 0.3s, stroke 0.3s, stroke-width 0.25s",
+      });
+      edgesG.appendChild(path);
+      return path;
+    });
+
+    const nodeEls = dag.nodes.map(n => {
+      const g = el("g", { style: "transition: opacity 0.3s" });
+
+      const glowOuter = el("circle", {
+        cx: n.x, cy: n.y, r: NODE_R + 8, fill: "none",
+        stroke: P.edge, "stroke-width": 1, opacity: 0, filter: "url(#g2)",
+      });
+      const glowBig = el("circle", {
+        cx: n.x, cy: n.y, r: NODE_R + 16, fill: "none",
+        stroke: P.critical, "stroke-width": 0.5, opacity: 0, filter: "url(#g3)",
+      });
+      const main = el("circle", {
+        cx: n.x, cy: n.y, r: NODE_R,
+        fill: P.node, stroke: P.edge, "stroke-width": 1, filter: "none",
+        style: "transition: stroke 0.3s, stroke-width 0.25s",
+      });
+      const inner = el("circle", {
+        cx: n.x, cy: n.y, r: 2.5,
+        fill: "none", stroke: P.stroke, "stroke-width": 0.8, opacity: 0.15,
+        style: "transition: stroke 0.3s, opacity 0.3s",
+      });
+
+      g.appendChild(glowOuter);
+      g.appendChild(glowBig);
+      g.appendChild(main);
+      g.appendChild(inner);
+      nodesG.appendChild(g);
+
+      return { glowOuter, glowBig, main, inner };
+    });
+
+    return { edgeEls, nodeEls, nodeMap };
+  }
+
+  function setNodeState(ne, state) {
+    if (state === "active") {
+      ne.glowOuter.setAttribute("stroke", P.critical);
+      ne.glowOuter.setAttribute("opacity", "0.2");
+      ne.glowBig.setAttribute("opacity", "0.15");
+      ne.main.setAttribute("stroke", P.critical);
+      ne.main.setAttribute("stroke-width", "2.5");
+      ne.main.setAttribute("filter", "url(#g1)");
+      ne.inner.setAttribute("stroke", P.critical);
+      ne.inner.setAttribute("opacity", "0.7");
+    } else if (state === "visited") {
+      ne.glowOuter.setAttribute("stroke", P.accent);
+      ne.glowOuter.setAttribute("opacity", "0.2");
+      ne.glowBig.setAttribute("opacity", "0");
+      ne.main.setAttribute("stroke", P.accent);
+      ne.main.setAttribute("stroke-width", "1.5");
+      ne.main.setAttribute("filter", "url(#g1)");
+      ne.inner.setAttribute("stroke", P.accent);
+      ne.inner.setAttribute("opacity", "0.4");
+    } else {
+      ne.glowOuter.setAttribute("opacity", "0");
+      ne.glowBig.setAttribute("opacity", "0");
+      ne.main.setAttribute("stroke", P.edge);
+      ne.main.setAttribute("stroke-width", "1");
+      ne.main.setAttribute("filter", "none");
+      ne.inner.setAttribute("stroke", P.stroke);
+      ne.inner.setAttribute("opacity", "0.15");
+    }
+  }
+
+  function setEdgeState(path, state) {
+    if (state === "frontier") {
+      path.setAttribute("stroke", P.critical);
+      path.setAttribute("stroke-width", "3");
+      path.setAttribute("opacity", "1");
+      path.setAttribute("marker-end", "url(#arrC)");
+      path.setAttribute("filter", "url(#g2)");
+    } else if (state === "walked") {
+      path.setAttribute("stroke", P.accent);
+      path.setAttribute("stroke-width", "1.8");
+      path.setAttribute("opacity", "0.6");
+      path.setAttribute("marker-end", "url(#arrW)");
+      path.setAttribute("filter", "url(#g1)");
+    } else {
+      path.setAttribute("stroke", P.edge);
+      path.setAttribute("stroke-width", "0.7");
+      path.setAttribute("opacity", "0.1");
+      path.setAttribute("marker-end", "url(#arr)");
+      path.setAttribute("filter", "none");
+    }
+  }
+
+  async function runLoop() {
+    while (!cancelled) {
+      const seed = Math.floor(Math.random() * 100000);
+      const nodeCount = randRange(14, 28);
+      const density = 0.3 + Math.random() * 0.4;
+
+      const dag = generateDAG(nodeCount, density, seed);
+      const order = topoSort(dag.nodes, dag.edges);
+      const { edgeEls, nodeEls } = renderDAG(dag);
+
+      fadeEl.style.opacity = "1";
+      await sleep(600);
+      if (cancelled) break;
+
+      const visited = new Set();
+      const walkedEdges = new Set();
+      let broke = false;
+
+      for (let i = 0; i < order.length; i++) {
+        if (cancelled) { broke = true; break; }
+        const nid = order[i];
+
+        // Mark frontier edges
+        const frontierIdxs = [];
+        dag.edges.forEach((e, idx) => {
+          if (e.to === nid && visited.has(e.from)) frontierIdxs.push(idx);
+        });
+
+        // Set active node
+        if (i > 0) setNodeState(nodeEls[order[i - 1]], "visited");
+        setNodeState(nodeEls[nid], "active");
+
+        // Set frontier edges
+        frontierIdxs.forEach(idx => setEdgeState(edgeEls[idx], "frontier"));
+
+        visited.add(nid);
+        await sleep(WALK_SPEED);
+        if (cancelled) { broke = true; break; }
+
+        // Move frontier to walked
+        frontierIdxs.forEach(idx => {
+          walkedEdges.add(idx);
+          setEdgeState(edgeEls[idx], "walked");
+        });
+      }
+      if (broke) break;
+
+      // Final state: deactivate last node
+      if (order.length > 0) setNodeState(nodeEls[order[order.length - 1]], "visited");
+      await sleep(WALK_SPEED);
+      if (cancelled) break;
+
+      // Hold
+      await sleep(HOLD_MS);
+      if (cancelled) break;
+
+      // Fade out
+      fadeEl.style.opacity = "0";
+      await sleep(FADE_MS);
+      if (cancelled) break;
+
+      // Blank
+      await sleep(BLANK_MS);
+    }
+  }
+
+  runLoop();
+</script>
