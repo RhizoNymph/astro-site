@@ -2,12 +2,19 @@
 // src/layouts/BaseLayout.astro
 import "../styles/global.css";
 import DAGBackground from "../components/DAGBackground.astro";
+import { ViewTransitions } from "astro:transitions";
 
 interface Props {
     title: string;
 }
 
 const { title } = Astro.props;
+const currentPath = Astro.url.pathname;
+
+function isActive(href: string) {
+    if (href === '/') return currentPath === '/';
+    return currentPath.startsWith(href);
+}
 ---
 <!DOCTYPE html>
 <html lang="en">
@@ -15,10 +22,8 @@ const { title } = Astro.props;
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{title} - Nymph</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <!-- Favicon link (assuming you have favicon.svg in public/) -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <!-- Add other head elements like meta tags if needed -->
+    <ViewTransitions />
 </head>
 <body>
     <div class="dag-bg">
@@ -27,21 +32,25 @@ const { title } = Astro.props;
     <header>
         <div class="header-bar">
             <div class="header-top">
-                <a href="https://github.com/rhizonymph" target="_blank" class="social-icon"><i class="fab fa-github"></i></a>
-                <img src="https://avatars.githubusercontent.com/u/82485126?s=400&u=c7c677bcb0633a255e0da7a4e97165d8cfba745b&v=4" alt="Profile Picture" class="profile-pic">
-                <a href="https://twitter.com/rhizonymph" target="_blank" class="social-icon"><i class="fab fa-x-twitter"></i></a>
+                <a href="https://github.com/rhizonymph" target="_blank" class="social-icon" aria-label="GitHub">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+                </a>
+                <img src="/avatar.webp" alt="Profile Picture" class="profile-pic" width="48" height="48">
+                <a href="https://twitter.com/rhizonymph" target="_blank" class="social-icon" aria-label="X/Twitter">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                </a>
             </div>
-            <nav class="main-nav">
-                <ul>
-                    <li><a href="/">Bio</a></li>
-                    <li><a href="/blog/">Blog</a></li>
-                    <li><a href="/portfolio/">Code Portfolio</a></li>
-                </ul>
-            </nav>
         </div>
     </header>
 
     <div class="container">
+        <nav class="main-nav">
+            <ul>
+                <li><a href="/" class={isActive('/') ? 'active' : ''}>Bio</a></li>
+                <li><a href="/blog/" class={isActive('/blog/') ? 'active' : ''}>Blog</a></li>
+                <li><a href="/portfolio/" class={isActive('/portfolio/') ? 'active' : ''}>Code Portfolio</a></li>
+            </ul>
+        </nav>
         <main>
             <slot />
         </main>
@@ -51,19 +60,6 @@ const { title } = Astro.props;
         
     </footer>
     
-    <script>
-        // Highlight active navigation link
-        const currentPath = window.location.pathname;
-        const navLinks = document.querySelectorAll('.main-nav a');
-
-        navLinks.forEach(link => {
-            const linkPath = link.getAttribute('href');
-            // Handle exact match for homepage and partial match for others
-            if ((currentPath === '/' && linkPath === '/') || (linkPath !== '/' && currentPath.startsWith(linkPath))) {
-                link.classList.add('active');
-            }
-        });
-    </script>
 </body>
 </html>
 
@@ -76,17 +72,18 @@ const { title } = Astro.props;
         height: 100%;
         z-index: 0;
         filter: blur(2px);
+        will-change: filter;
         pointer-events: none;
     }
 
     header {
         position: relative;
         z-index: 1;
-        background-image: url('/reaction-diffusion.png');
+        background-image: url('/reaction-diffusion.webp');
         background-size: cover;
         background-position: center;
         background-repeat: no-repeat;
-        padding: 10px 0;
+        padding: 6px 0;
     }
 
     .header-bar {
@@ -95,8 +92,7 @@ const { title } = Astro.props;
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 8px;
-        padding: 8px 20px;
+        padding: 4px 20px;
     }
 
     .header-top {
@@ -125,39 +121,43 @@ const { title } = Astro.props;
         text-decoration: none;
     }
 
+    .main-nav {
+        width: 100%;
+        display: flex;
+    }
+
     .main-nav ul {
         list-style: none;
         padding: 0;
         margin: 0;
         display: flex;
+        gap: 2px;
     }
 
     .main-nav li {
-        flex: 1;
         text-align: center;
     }
 
-    .main-nav {
-        width: 100%;
-        max-width: 400px;
-        padding-left: 20px;
-    }
-
     .main-nav a {
-        color: #ffffff;
+        color: #aaa;
         text-decoration: none;
         font-weight: bold;
         display: block;
-        padding: 10px 16px;
-        border-radius: 4px;
-        transition: background-color 0.3s ease;
+        padding: 10px 20px;
+        border-radius: 5px 5px 0 0;
+        transition: background-color 0.3s ease, color 0.3s ease;
         white-space: nowrap;
-        background-color: #333;
+        background-color: rgba(30, 30, 30, 0.6);
     }
 
-    .main-nav a:hover,
+    .main-nav a:hover {
+        color: #fff;
+        background-color: rgba(42, 42, 42, 0.5);
+    }
+
     .main-nav a.active {
-        background-color: #3a3a3a;
+        color: #fff;
+        background-color: rgba(42, 42, 42, 0.7);
     }
 
     .container {
@@ -171,9 +171,9 @@ const { title } = Astro.props;
     }
 
     main {
-        background-color: rgba(42, 42, 42, 0.7);
+        background-color: rgba(42, 42, 42, 0.8);
         padding: 20px;
-        border-radius: 5px;
+        border-radius: 0 5px 5px 5px;
     }
 
     footer {
@@ -193,7 +193,7 @@ const { title } = Astro.props;
         }
 
         .main-nav a {
-            padding: 10px 14px;
+            padding: 8px 14px;
             font-size: 0.95em;
         }
 
@@ -203,6 +203,7 @@ const { title } = Astro.props;
 
         main {
             padding: 16px;
+            border-radius: 0 0 5px 5px;
         }
     }
 </style>

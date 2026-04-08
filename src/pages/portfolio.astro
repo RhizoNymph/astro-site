@@ -1,5 +1,6 @@
 ---
 // src/pages/portfolio.astro
+export const prerender = false;
 import BaseLayout from '../layouts/BaseLayout.astro';
 
 // Define the list of repositories to fetch (owner/name)
@@ -8,14 +9,16 @@ const repoIdentifiers = [
   { owner: 'RhizoNymph', name: 'prime-perf' },
   { owner: 'whetstoneresearch', name: 'doppler-indexer-rs' },
   { owner: 'RhizoNymph', name: "Patho-Bench-cli" },
-  { onwer: 'RhizoNymph', name: "cc-container" },
+  { onwer: 'RhizoNymph', name: "AdaptiveExectutor" },
   { owner: 'RhizoNymph', name: 'esp32-udp-led-strip' }  
 ];
 
 // Fetch data for each repository from the GitHub API
 const repoDataPromises = repoIdentifiers.map(async ({ owner, name }) => {
   try {
-    const response = await fetch(`https://api.github.com/repos/${owner}/${name}`);
+    const response = await fetch(`https://api.github.com/repos/${owner}/${name}`, {
+      cf: { cacheTtl: 3600, cacheEverything: true },
+    });
     if (!response.ok) {
       // Handle potential errors like 404 Not Found or rate limiting
       console.error(`Failed to fetch ${owner}/${name}: ${response.status} ${response.statusText}`);

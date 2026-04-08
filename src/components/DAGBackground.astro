@@ -14,8 +14,11 @@
         <marker id="arrW" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
           <path d="M 0 1 L 10 5 L 0 9 z" fill="#62a0ea" opacity="0.6"/>
         </marker>
+        <pattern id="grid-dots" width="40" height="40" patternUnits="userSpaceOnUse">
+          <circle cx="20" cy="20" r="0.5" fill="#813d9c" opacity="0.15"/>
+        </pattern>
       </defs>
-      <g id="dag-grid"></g>
+      <rect id="dag-grid" width="100%" height="100%" fill="url(#grid-dots)"/>
       <g id="dag-edges"></g>
       <g id="dag-nodes"></g>
     </svg>
@@ -36,13 +39,13 @@
 </style>
 
 <script>
+  function initDAG() {
   const WALK_SPEED = 800;
   const HOLD_MS = 2200;
   const FADE_MS = 900;
   const BLANK_MS = 400;
   const PAD = 80, NODE_R = 20;
 
-  // Size the viewBox to match the container
   const container = document.getElementById("dag-bg");
   const svg = document.getElementById("dag-svg");
   let W = container.clientWidth || 960;
@@ -53,6 +56,8 @@
     accent: "#62a0ea", edge: "#813d9c", critical: "#dc8add",
   };
   const SVG_NS = "http://www.w3.org/2000/svg";
+
+  let ac = new AbortController();
 
   function mulberry32(a) {
     return () => {
@@ -142,55 +147,38 @@
   }
 
   function sleep(ms) {
-    return new Promise(r => {
-      const id = setTimeout(r, ms);
-      const check = setInterval(() => {
-        if (cancelled) { clearTimeout(id); clearInterval(check); r(); }
-      }, 50);
-      setTimeout(() => clearInterval(check), ms + 10);
+    return new Promise((resolve) => {
+      const signal = ac.signal;
+      if (signal.aborted) { resolve(); return; }
+      const timer = setTimeout(() => {
+        signal.removeEventListener('abort', onAbort);
+        resolve();
+      }, ms);
+      function onAbort() {
+        clearTimeout(timer);
+        resolve();
+      }
+      signal.addEventListener('abort', onAbort, { once: true });
     });
   }
 
   const fadeEl = document.getElementById("dag-fade");
-  const gridG = document.getElementById("dag-grid");
   const edgesG = document.getElementById("dag-edges");
   const nodesG = document.getElementById("dag-nodes");
-
-  // Draw grid dots based on actual size
-  const gridCols = Math.ceil(W / 40);
-  const gridRows = Math.ceil(H / 40);
-  for (let i = 0; i < gridCols; i++) {
-    for (let j = 0; j < gridRows; j++) {
-      gridG.appendChild(el("circle", {
-        cx: i * 40 + 20, cy: j * 40 + 20, r: 0.5, fill: P.edge, opacity: 0.15,
-      }));
-    }
-  }
 
   function updateSize() {
     W = container.clientWidth || 960;
     H = container.clientHeight || 600;
     svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
-    gridG.innerHTML = "";
-    const cols = Math.ceil(W / 40);
-    const rows = Math.ceil(H / 40);
-    for (let i = 0; i < cols; i++) {
-      for (let j = 0; j < rows; j++) {
-        gridG.appendChild(el("circle", {
-          cx: i * 40 + 20, cy: j * 40 + 20, r: 0.5, fill: P.edge, opacity: 0.15,
-        }));
-      }
-    }
   }
 
-  let cancelled = false;
   let resizeTimer;
   window.addEventListener("resize", () => {
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(() => {
-      cancelled = true;
+      ac.abort();
+      ac = new AbortController();
       updateSize();
-      cancelled = false;
       runLoop();
     }, 200);
   });
@@ -304,7 +292,7 @@
   }
 
   async function runLoop() {
-    while (!cancelled) {
+    while (!ac.signal.aborted) {
       const seed = Math.floor(Math.random() * 100000);
       const nodeCount = randRange(14, 28);
       const density = 0.3 + Math.random() * 0.4;
@@ -315,34 +303,30 @@
 
       fadeEl.style.opacity = "1";
       await sleep(600);
-      if (cancelled) break;
+      if (ac.signal.aborted) break;
 
       const visited = new Set();
       const walkedEdges = new Set();
       let broke = false;
 
       for (let i = 0; i < order.length; i++) {
-        if (cancelled) { broke = true; break; }
+        if (ac.signal.aborted) { broke = true; break; }
         const nid = order[i];
 
-        // Mark frontier edges
         const frontierIdxs = [];
         dag.edges.forEach((e, idx) => {
           if (e.to === nid && visited.has(e.from)) frontierIdxs.push(idx);
         });
 
-        // Set active node
         if (i > 0) setNodeState(nodeEls[order[i - 1]], "visited");
         setNodeState(nodeEls[nid], "active");
 
-        // Set frontier edges
         frontierIdxs.forEach(idx => setEdgeState(edgeEls[idx], "frontier"));
 
         visited.add(nid);
         await sleep(WALK_SPEED);
-        if (cancelled) { broke = true; break; }
+        if (ac.signal.aborted) { broke = true; break; }
 
-        // Move frontier to walked
         frontierIdxs.forEach(idx => {
           walkedEdges.add(idx);
           setEdgeState(edgeEls[idx], "walked");
@@ -350,24 +334,27 @@
       }
       if (broke) break;
 
-      // Final state: deactivate last node
       if (order.length > 0) setNodeState(nodeEls[order[order.length - 1]], "visited");
       await sleep(WALK_SPEED);
-      if (cancelled) break;
+      if (ac.signal.aborted) break;
 
-      // Hold
       await sleep(HOLD_MS);
-      if (cancelled) break;
+      if (ac.signal.aborted) break;
 
-      // Fade out
       fadeEl.style.opacity = "0";
       await sleep(FADE_MS);
-      if (cancelled) break;
+      if (ac.signal.aborted) break;
 
-      // Blank
       await sleep(BLANK_MS);
     }
   }
 
   runLoop();
+  } // end initDAG
+
+  if ('requestIdleCallback' in window) {
+    requestIdleCallback(initDAG);
+  } else {
+    setTimeout(initDAG, 0);
+  }
 </script>

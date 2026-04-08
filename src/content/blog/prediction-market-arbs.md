@@ -25,6 +25,6 @@ Adventures in Prediction Market Arbitrage
 <br>round up = rounds to the next cent
 
 <br>The plot of fees ends up looking like:
-<br><img src="/blog-posts/first-post/feeplot.png" alt="Fee plot for Kalshi contracts" width="300" />
+<br><img src="/blog-posts/first-post/feeplot.webp" alt="Fee plot for Kalshi contracts" width="300" loading="lazy" />
 
 <br>Ultimately, whenever I found what appeared to be an arb there were very small arbs with very little liquidity available to trade it at market and I found the idea of checking this and manually checking for liquidity and putting on the arb to be not worth my time. Were I to continue with this, I would start placing orders where it would actually be worth it and buying the other leg when I got filled. At the moment, I don't really want to deal with their orderbook api or automating this so I won't be continuing. Maybe one day I will, but that day is not today. I'd also need to figure out a way to filter out markets that aren't actually the same, which would need to go beyond their titles down to their rules for settlement. If not for that, I might actually tackle this right now.
