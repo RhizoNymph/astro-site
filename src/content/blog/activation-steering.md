@@ -244,7 +244,7 @@ Let's look at the max tokens sweep again to show the difference
 
 Before:
 
-<div style="display: flex; justify-content: center; width: 60%; margin: 0 auto;">
+<div style="display: flex; justify-content: center; margin: 0 auto;">
     <img src="/blog-posts/activation-steering/max_tokens_sweep.webp" loading="lazy">
 </div>     
 
