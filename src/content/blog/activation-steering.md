@@ -169,7 +169,7 @@ We should also stop calculating the global + request vector every step, and inst
 
 Finally, this needs to all be combined into a single contiguous tensor with per-hook, per-layer views. This will completely eliminate the branching structure and condense all of the cudaLaunchKernel + cudaMemcpyAsync into a single event each, removing all of the overhead they are responsible for.
 
-The above optimizations should essentially remove the entire per step overhead introduced by populate_steering_tables, lowering it by ~49%. It's quite likely that much of the cudaEventSynchronize overhead clears up from this too, bringing us to about ~67.7% predicted overhead reduction.
+The above optimizations should essentially remove the entire per step overhead introduced by populate_steering_tables, lowering it by ~49%. It's quite likely that much of the cudaEventSynchronize overhead clears up from this too, bringing us to about ~67.7% predicted overhead reduction. (spoiler: this prediction turned out to be wrong, see Returning to Populate)
 
 ## Pivoting to the Per Request Cost
 
@@ -261,6 +261,8 @@ Clear win! The throughput benchmark shows much better scaling with active reques
     <img src="/blog-posts/activation-steering/matrix_throughput_bars_postfix-hash.webp" style="width: 50%;" loading="lazy">
 </div>
 
+That's it for the per request costs for now, there's more to do here but it will be part of future work since we took care of most of it. I'll say more about what's left in the conclusions section.
+
 ## Returning to Populate
 
 Okay, but what about populate_steering tables? We identified ~67% of the overhead that we could cut here right? Well, unfortunately it didn't turn out to be so simple. Sure the 2.5 ms per step was accurate, but it turns out I was measuring CPU time with time.perf_counter here without considering that much of that time was already overlapped with GPU forward passes. I figured this out in the process of shipping two of the fixes I mentioned, the dirty flag cache and the batched copy per layer. I didn't do any of the others, because I predicted that given the new information they would only save ~1% of the overhead. 
@@ -293,7 +295,7 @@ The max tokens sweep shows that per-step latency and throughput overhead converg
     <img src="/blog-posts/activation-steering/max_tokens_sweep_postfix-populate-distinct.webp" loading="lazy">
 </div>
 
-We've already established that enabling steering and having 0 steered vectors is essentially free in our benchmarked cases, but below is a close look at how this scales per request after the changes made along the way. At BS=16, N=16 we've recoverd ~500 tok/s throughput and ~800 ms latency from the optimizations. 
+We've already established that enabling steering and having 0 steered vectors is essentially free in our benchmarked cases, but below is a close look at how this scales per request after the changes made along the way. At BS=16, N=16 we've recovered ~500 tok/s throughput and ~800 ms latency from the optimizations. 
 
 <div style="display: flex; justify-content: center; margin: 0 auto;">
     <img src="/blog-posts/activation-steering/mixed_batch_postfix-populate-distinct.webp" loading="lazy">
