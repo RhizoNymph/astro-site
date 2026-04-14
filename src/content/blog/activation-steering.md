@@ -115,12 +115,16 @@ To confirm that and see the other half of the picture (the Python
 interpreter time nsys can't see), I added wall-clock timing
 instrumentation around the major sections of the per-step path:
 
+<div class="table-row" style="display: flex; justify-content: center;">
+
 | source                           | per-step | % of ~5.1 ms |
 |----------------------------------|----------|--------------|
 | populate_steering_tables         | 2.50 ms  | 49%          |
 | Index build loop                 | 0.14 ms  | 3%           |
 | Forward pass dispatch            | 0.23 ms  | 5%           |
 | Outside the three sections above | ~2.2 ms  | 43%          |
+
+</div>
 
 populate alone accounts for half of every per-step overhead. The other half splits roughly evenly between cudaEventSynchronize wait time caused by populate's GPU back-pressure (~0.95 ms/step, ~43% the 'Outside' row) and something else needed more timing analysis to figure out. We'll get into this after we go over populate more deeply.
 
@@ -177,7 +181,7 @@ I'll come back to populate costs later on in the article, before I actually trie
 
 Now onto the rest of it. After instrumenting every per decode step path in execute_model, sample_tokens and EngineCore.step the per-step delta across active steered requests 4 vs 16 turned out to be negligible at ~50us. This showed that the remaining overhead is actually not per-step, so I zoomed out and used NVTX to time the per request paths. This lead to:
 
-<div class="table-row">
+<div class="table-row" style="display: flex; justify-content: center;">
 
 | range | n=4 (per call) | n=16 (per call) | per-call delta |
 | :--- | :--- | :--- | :--- |
@@ -195,7 +199,7 @@ LLM._run_completion is composed of LLM._run_engine and LLM._add_completion_reque
 
 That's not enough though, I'd like this to be able to be performant for short length workloads too. So next, another layer deep on the timing.
 
-<div class="table-row">
+<div class="table-row" style="display: flex; justify-content: center;">
 
 | range | per-request (median) | % of submission | scope |
 | :--- | :--- | :--- | :--- |
@@ -269,7 +273,7 @@ Okay, but what about populate_steering tables? We identified ~67% of the overhea
 
 After implementing the batched copy, about 0.65 ms per call turned out to be on the critical path. Before the caching fix, this would have been a 0.65 ms per step cost which would have added up. Afterwards, it turns out to only happen when the steering tables need to actually change. If you have a lot of steering config churn, this is a big deal. If not, then it turns out to be kind of disappointing. In the benchmarks I ran, it only runs twice instead of on every decode because the vectors were shared (this would resemble the global case). In the distinct vector benchmarks the populate cost climbs slightly because the dirty flag fires on every register_config, but it's still only ~25 ms of the remaining 666 ms and dominated by the per request cost.
 
-<div class="table-row">
+<div class="table-row" style="display: flex; justify-content: center;">
 
 | batch | postfix-hash | postfix-populate | delta |
 | :--- | :--- | :--- | :--- |
@@ -305,7 +309,7 @@ The absolute numbers remaining at this scale are 666 ms. Our generation times he
 
 The full breakdown of what the remaining 666 ms is composed of is:
 
-<div class="table-row">
+<div class="table-row" style="display: flex; justify-content: center;">
 
 | source | est. ms | scales with | Triton kernel helps? |
 | :--- | :--- | :--- | :--- |
