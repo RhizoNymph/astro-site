@@ -47,3 +47,22 @@ table {
     border-collapse: collapse;
     border-spacing: 0;
 }
+
+article img {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Target every cell and the header */
+  th, td {
+    border: 1px solid #ffffff; /* White borders */
+    padding: 10px 15px;
+    text-align: left;
+  }
+
+  /* Optional: slightly different background for headers */
+  th {
+    background-color: rgba(255, 255, 255, 0.1); 
+    font-weight: bold;
+  }
