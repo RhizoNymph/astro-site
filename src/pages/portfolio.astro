@@ -1,6 +1,6 @@
 ---
 // src/pages/portfolio.astro
-export const prerender = false;
+export const prerender = true;
 import BaseLayout from '../layouts/BaseLayout.astro';
 
 // Define the list of repositories to fetch (owner/name)
@@ -17,6 +17,7 @@ const repoIdentifiers = [
 const repoDataPromises = repoIdentifiers.map(async ({ owner, name }) => {
   try {
     const response = await fetch(`https://api.github.com/repos/${owner}/${name}`, {
+      headers: { 'User-Agent': 'astro-portfolio' },
       cf: { cacheTtl: 3600, cacheEverything: true },
     });
     if (!response.ok) {
