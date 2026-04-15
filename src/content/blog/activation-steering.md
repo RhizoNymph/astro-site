@@ -320,7 +320,7 @@ The full breakdown of what the remaining 666 ms is composed of is:
 
 </div>
 
-At the scale of BS=512, N=512 large scale MoE deployment, the 16 ms remaining cost compounds to a full 8 seconds of submission cost per generate() call. Even amortizing across 30 seconds makes this a 27% overhead. This means the work isn't done yet, and the per-request submission cost is the dominant remaining overhead at frontier scale and at short generation lengths, and it's the one optimization with the most leverage left to claim. Timing reveals that this is in the per layer loop in register_config's new row path, where torch.tensor(list, device='cuda') causes synchronous host-device transfer similar to what we identified in the populate function.
+At the scale of BS=512, N=512, the 16 ms remaining cost compounds to a full 8 seconds of submission cost per generate() call (granted this requires every request to need a distinct steering config). Even amortizing across 30 seconds makes this a 27% overhead. This means the work isn't done yet, and the per-request submission cost is the dominant remaining overhead at larger batch sizes and at short generation lengths, and it's the one optimization with the most leverage left to claim. Timing reveals that this is in the per layer loop in register_config's new row path, where torch.tensor(list, device='cuda') causes synchronous host-device transfer similar to what we identified in the populate function.
 
 The post-fix charts below show that table sizing still matters. This is a fundamental property of having a maximum table size, which is required to keep CUDA graphs intact. If every request has a unique config, use ~batch size; if most share a config, use 4× the number you expect to see distinct in a batch.
 
@@ -332,7 +332,7 @@ As a final aside, I should note that benchmarks were run with VLLM_ENABLE_V1_MUL
 
 ## Optimization Roadmap
 
-- Optimize config registration to further reduce per request overhead, the dominant remaining overhead at frontier scales and short workloads
+- Optimize config registration to further reduce per request overhead, the dominant remaining overhead at larger batch sizes and short workloads
 - Name to vector resolution should happen on the worker side
 - Write a custom Triton kernel for indexed scatter to steering tables 
  
