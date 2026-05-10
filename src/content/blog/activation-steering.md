@@ -28,7 +28,7 @@ To get a better idea of how it all fits together, refer to the diagram:
     
 # Constructing Steering Vectors
 
-In case you don't know how, you can construct steering vectors to use with this a few different ways. The aforementioned RepEng is the first way I ever did it, you can learn more about that here: [https://github.com/vgel/repeng]. The basic idea is to take the activations at the layer you want to steer from two sets of prompts that have different meanings or feelings, average the activations of each set, and take the difference between the two. Another way is to use sparse autoencoders, which expand the layer into a larger dimension sparse (mostly zeroes) latent space and learn to reconstruct activations from the decoders weights, driven by the feature activations in the latent space. The sparsity constraint tries to minimize overlap between the different features that are "active" for each concept in a prompt. You can make steering vectors from the decoder weights. This is the technique behind the famous Golden Gate Claude, which is the first thing that made me (and many others) interested in mech interp and see something real here. 
+In case you don't know how, you can construct steering vectors to use with this a few different ways. The aforementioned RepEng is the first way I ever did it, you can learn more about that here: [https://github.com/vgel/repeng]. The basic idea is to take the activations at the layer you want to steer from two sets of prompts that have different meanings or feelings, average the activations of each set, and take the difference between the two. Another way is to use sparse autoencoders, which expand the layer into a larger dimension sparse (mostly zeroes) latent space and learn to reconstruct activations from the decoders weights, driven by the feature activations in the latent space. The sparsity constraint tries to minimize overlap between the different features that are "active" for each concept in a prompt. You can make steering vectors from the decoder weights. The work on Golden Gate Claude used feature clamping through a forward pass of the SAE, but decoder direction addition is a commonly used cheaper approximation of this that is easier to implement without breaking the static buffer design.
 
 Once you have your vectors, you can pass them to the API as described in the API Usage section.
 
@@ -330,6 +330,131 @@ The post-fix charts below show that table sizing still matters. This is a fundam
 
 As a final aside, I should note that benchmarks were run with VLLM_ENABLE_V1_MULTIPROCESSING=0 to enable debug instrumentation. This means that in production, the multiprocessing will introduce a few more ms of overhead for serializing the vectors being passed. We could cut this by passing named references to vectors that are stored worker side instead of the full thing. There's already a named vector registration functionality, but the API layer resolves it to the vectors themselves instead of this happening on the worker side. This is a future optimization that I want to do. 
 
+## H100 Validation
+
+All the benchmarks above were run on 3090s, which are great for iteration but not what anyone is actually going to deploy this on. So I rented an H100 to see if the picture held on production hardware. All runs here used Gemma 3 in both 4B and 27B flavors, so this is also a first look at scaling behavior across model sizes.
+
+The headline: enabled_idle is within noise of disabled across every configuration on both models. Turning the feature on without active steering requests is effectively free, which was the main design goal and is now confirmed on production hardware.
+
+### CUDA graphs stayed intact
+
+Before looking at steering overheads I wanted to verify that the graphs are actually being captured and used. This is load-bearing for the whole design — all the "no conditionals, opaque custom ops, statically sized buffers" decisions were in service of keeping graphs intact, and if the graphs weren't being captured none of the overhead numbers would mean what they look like they mean.
+
+<div class="table-row" style="display: flex; justify-content: center;">
+
+| model | graphs + steering | eager + steering | ratio |
+| :--- | :--- | :--- | :--- |
+| 4B | 738 ms | 4653 ms | 6.3× faster |
+| 27B | 3246 ms | 8850 ms | 2.7× faster |
+
+</div>
+
+Graphs deliver the expected speedup so we know we're on the fast path. Interestingly, graphs help proportionally less on 27B — which makes sense since when each kernel is doing more work the per-launch overhead that graphs eliminate is a smaller share of total time.
+
+### TPOT, TTFT, and E2EL
+
+Now the main numbers. Time per output token across max_tokens:
+
+<div class="table-row" style="display: flex; justify-content: center;">
+
+| Model | Configuration | max_tok=256 | max_tok=1024 | max_tok=2048 |
+| :--- | :--- | :--- | :--- | :--- |
+| 4B | disabled | 5.1 | 5.3 | 5.2 |
+| 4B | enabled_idle | 5.2 (+2.0%) | 5.2 (-1.9%) | 5.1 (-1.9%) |
+| 4B | all_steered_shared | 6.1 (+19.6%) | 5.9 (+11.3%) | 5.9 (+13.5%) |
+| 4B | per_request_n4 | 6.1 (+19.6%) | 6.0 (+13.2%) | 5.7 (+9.6%) |
+| 4B | per_request_n16 | 6.9 (+35.3%) | 6.1 (+15.1%) | 5.9 (+13.5%) |
+| 27B | disabled | 21.5 | 24.4 | 25.0 |
+| 27B | enabled_idle | 21.5 (0.0%) | 24.4 (0.0%) | 25.1 (+0.4%) |
+| 27B | all_steered_shared | 24.1 (+12.1%) | 26.8 (+9.8%) | 26.4 (+5.6%) |
+| 27B | per_request_n4 | 24.4 (+13.5%) | 26.8 (+9.8%) | 26.1 (+4.4%) |
+| 27B | per_request_n16 | 23.5 (+9.3%) | 26.7 (+9.4%) | 26.2 (+4.8%) |
+
+</div>
+
+TPOT converges cleanly with max_tokens. At 2048 tokens the per-token overhead is ~13.5% on 4B and ~4.8% on 27B, even with every request running a distinct steering config. The 27B number is lower in relative terms because the model has more work to do per step, so the fixed steering cost gets diluted further. This is the story I'd hoped to tell on the 3090 but couldn't quite — on H100 the scaling works out the way the design suggested it should.
+
+Now TTFT:
+
+<div class="table-row" style="display: flex; justify-content: center;">
+
+| Model | Configuration | max_tok=256 | max_tok=1024 | max_tok=2048 |
+| :--- | :--- | :--- | :--- | :--- |
+| 4B | disabled | 46 | 23.6 | 24.2 |
+| 4B | enabled_idle | 46 (1.00×) | 23.8 (1.01×) | 26.7 (1.10×) |
+| 4B | all_steered_shared | 870 (18.9×) | 143 (6.06×) | 144 (5.95×) |
+| 4B | per_request_n4 | 893 (19.4×) | 129 (5.47×) | 135 (5.58×) |
+| 4B | per_request_n16 | 615 (13.4×) | 129 (5.47×) | 144 (5.95×) |
+| 27B | disabled | 181 | 85 | 86 |
+| 27B | enabled_idle | 170 (0.94×) | 85 (1.00×) | 86 (1.00×) |
+| 27B | all_steered_shared | 923 (5.10×) | 449 (5.28×) | 427 (4.97×) |
+| 27B | per_request_n4 | 836 (4.62×) | 453 (5.33×) | 422 (4.91×) |
+| 27B | per_request_n16 | 1453 (8.03×) | 442 (5.20×) | 424 (4.93×) |
+
+</div>
+
+This is where the cost actually lives. ~5× overhead on 4B and ~4× on 27B at 2048 tokens. Unlike TPOT, TTFT doesn't amortize with max_tokens — it can't, it's a one-time registration cost paid once per request. This is the same per-request submission overhead I identified as the dominant remaining cost in the 3090 work, and it's still the cost to beat.
+
+What pulls the story together is E2EL, which is what users actually feel:
+
+<div class="table-row" style="display: flex; justify-content: center;">
+
+| Configuration | 4B | 27B |
+| :--- | :--- | :--- |
+| disabled | 4524 ms | 20580 ms |
+| enabled_idle | 4527 ms (+0%) | 20908 ms (+2%) |
+| per_request_n4 | 4784 ms (+6%) | 24823 ms (+21%) |
+| per_request_n16 | 4848 ms (+7%) | 25137 ms (+22%) |
+
+</div>
+
+On 4B the overhead is about 6.5% end-to-end at 2048 max_tokens, which is the regime where TPOT dominates and the TTFT hit gets washed out. On 27B though it's ~21.5%, and this is the thing I don't want to soften: even though the TTFT *ratio* is better on 27B (4× vs 5×), the *absolute* TTFT cost is higher and the per-step cost is lower, so TTFT ends up dominating a larger share of E2EL. The counterintuitive takeaway is that the per-request submission overhead hurts more, relatively, on larger models for short workloads. If you're running a chatbot on 4B with typical response lengths this is fine; if you're running 27B for short turns, you'll feel it.
+
+### Per-active-request scaling
+
+One thing I wanted to confirm is that the per-request cost really is per *active steered* request and doesn't scale with total batch size:
+
+<div class="table-row" style="display: flex; justify-content: center;">
+
+| BS | per-active cost (ms, distinct vectors) |
+| :--- | :--- |
+| 64 | 30.9 |
+| 128 | 30.9 |
+| 256 | 31.0 |
+| 384 | 31.6 |
+
+</div>
+
+Flat from 64 to 384. If you're running a server where only some requests need steering, the unsteered ones don't pay for it. This is the behavior you want.
+
+Worth noting: the H100 per-active-request cost is ~31 ms vs the ~15.6 ms number I landed on at the end of the 3090 work. These aren't directly comparable — the 3090 benchmarks were run with `VLLM_ENABLE_V1_MULTIPROCESSING=0` to enable debug instrumentation, and the H100 runs are with multiprocessing enabled. The serialization cost of passing vectors across the MP boundary is the main suspect for the difference, which is exactly what the worker-side named-vector resolution item on the roadmap is designed to eliminate.
+
+### Throughput amortization
+
+The throughput side shows the same amortization story as the 3090 max_tokens sweep, but cleaner. This is the worst case — all requests steered with distinct configs:
+
+<div class="table-row" style="display: flex; justify-content: center;">
+
+| max_tokens | disabled (tok/s) | all-steered (tok/s) | vs baseline |
+| :--- | :--- | :--- | :--- |
+| 64 | 3590 | 1632 | 45% |
+| 128 | 3670 | 2264 | 61% |
+| 256 | 3638 | 2776 | 76% |
+| 1024 | 3378 | 3134 | 93% |
+| 2048 | 3200 | 3076 | 96% |
+
+</div>
+
+At 64 tokens you're at 45% of baseline because every request eats the full submission cost and then barely generates anything. By 2048 you're at 96%. For realistic workloads — chatbots, agents, anything that produces an actual response — you're in the 93–96% range. For anything shorter than that, the fixed cost is exposed.
+
+### VRAM
+
+VRAM cost is ~0.5 MB per configured steering slot, which at max_steering_configs=32 is under 0.02% of VRAM. This was true on 3090 and remains true on H100. Memory is not the constraint.
+ 
+---
+ 
+The design goals held up on production hardware: graphs intact, enabled_idle is free, TPOT amortizes cleanly, and memory is negligible. The per-request submission cost is still the thing to beat, and the H100 data agrees with the 3090 diagnosis about where to go next.
+
 ## Optimization Roadmap
 
 - Optimize config registration to further reduce per request overhead, the dominant remaining overhead at larger batch sizes and short workloads
@@ -454,7 +579,7 @@ Finally, you can list currently registered configs with GET /v1/steering/modules
 - While I've been working on this, vLLM dropped their v2 model runner (gated behind a feature flag) that makes some changes to the way things work but I'm excited to dig into that and integrate it. It moves a lot of bookkeeping over from the CPU to the GPU so it should be a fun challenge
 - I'll also make a small python package for dealing with the steering API
 
-I also intend to add conditional steering based on the output of a linear probe, so that you can register auto steering configs that kick in whenever a prompt makes the probe fire. This enables some interesting applications. For instance, Anthropic's Sonnet 4.5 model card (p. 89) shows that steering can make a model unaware it's being evaluated, or at least suppress verbalization of that awareness. This could be applied conditionally to address eval awareness without affecting other generations. I think that you want to be able to control this kind of thing for evals but training it into the model with SFT or RL is a bad idea. If you do, then you lose the ability to see what the difference in behavior is when it thinks it's being evaluated vs when it doesn't. Beyond that, there's this weird epistemic loop where you're trying to make the model unaware that it's being evaluated while you're actively doing so in an effort to train it. This is why I think that conditional activation steering is important, even if it's not always the most efficient way to get a model to adopt desired behavior vs say hot-swappable LoRAs.
+I've also written an activation capture consumer plugin system that I want to tie in with my steering runtime to produce dynamic steering based on pluggable signal sources like the output of a probe or activation similarity to a feature vector, so that you can register auto steering configs that kick in whenever a prompt makes the probe fire. This enables some interesting applications. For instance, Anthropic's Sonnet 4.5 model card (p. 89) shows that steering can make a model unaware it's being evaluated, or at least suppress verbalization of that awareness. This could be applied conditionally to address eval awareness without affecting other generations. I think that you want to be able to control this kind of thing for evals but training it into the model with SFT or RL is a bad idea. If you do, then you lose the ability to see what the difference in behavior is when it thinks it's being evaluated vs when it doesn't. Beyond that, there's this weird epistemic loop where you're trying to make the model unaware that it's being evaluated while you're actively doing so in an effort to train it. This is why I think that conditional activation steering is important, even if it's not always the most efficient way to get a model to adopt desired behavior vs say hot-swappable LoRAs.
 
 At some point in all this, I want to get this upstreamed so that people who don't just stumble across my work can use it. 
 
