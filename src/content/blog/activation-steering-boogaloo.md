@@ -154,8 +154,8 @@ actual steering operation were two separate operations. Typically, you wouldn't 
 because it does automatic kernel fusion for simple operations like this one. In our case though, it can't do this because the `apply_steering` custom op is registered
 as opaque. It has to be opaque because everything starts off as zero vectors, so while writing this I found that Inductor optimizes it out because at compile time
 this looks like a no-op. If we let this happen, steering never actually happens! This means that we need to fuse the operations manually with a custom Triton kernel.
-This is a very simple operation so it's reasonable to do this. It's a small win, only removing one kernel launch between each operation, but this happens for every hook
-point at every layer when you're steering so it's still worth it.
+
+The win is a little more than "one fewer kernel launch" though. The eager body does two passes over `hidden_states`: PyTorch's advanced indexing first materializes `table[index]` as a temporary, then the add reads `hidden_states` again to produce the output. The fused kernel streams `hidden_states` once, reads its row out of `table`, and writes the sum back in a single pass — half the memory bandwidth per call. Microbench shows that at prefill shapes (N=2048 tokens) this is roughly a 2× win on the op itself; at decode-N=1 it's closer to 10% (the launch-overhead share, which gets captured into the CUDA graph anyway and effectively disappears at replay time). Either way, the op fires for every hook point at every layer when steering is on, so it's worth doing.
 
 The core operation is:
 
@@ -178,8 +178,11 @@ for h_off in range(0, H, BLOCK_H):
     tl.store(out_row_ptr + h_idx * o_stride_h, result, mask=mask)
 ```
 
-There are some other pieces around choosing the block_H for your hardware and doing the kernel warmup ahead of graph capture so the JIT cost is frontloaded,
-but this is the meat of it. The benchmarks show that this gives about a 4% reduction end to end latency under graph capture, which is small but respectable.
+There are some other pieces around choosing the `BLOCK_H` for your hardware and doing the kernel warmup ahead of graph capture so the JIT cost is frontloaded, but this is the meat of it.
+
+
+
+## Things I tried that didn't pay off
 
 <div class="table-row">
 
