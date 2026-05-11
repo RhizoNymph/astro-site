@@ -4,11 +4,11 @@ pubDate: 2026-05-10
 ---
 # Activation Steering Part 2: Electric Boogaloo
 
-In my first blog on activation steering in vLLM (which you can read (here)[https://www.rhizonymph.com/blog/activaton-steering/]) I walked through the work I've
+In my first blog on activation steering in vLLM (which you can read [here](https://www.rhizonymph.com/blog/activation-steering/)) I walked through the work I've
 been doing adding support for steering vectors to vLLM. In it, I showed that in the end there was still real overhead vs the steering disabled case and detailed
 some things that I planned to do in the future to try and close the gap. Since then, I've tried these out and tried other things I hadn't thought of back then that
 further profiling revealed I should tackle. In this post I'm going to go over what I tried, what worked, and what didn't. I'm going to stick with the microbenches from
-(my benchmark suite)[https://www.github.com/RhizoNymph/steering-bench] but at the end we're going to compare the latency/throughput benchmarks that I posted results
+[my benchmark suite](https://www.github.com/RhizoNymph/steering-bench) but at the end we're going to compare the latency/throughput benchmarks that I posted results
 from in the last article.
 
 Let us start with reviewing the optimization roadmap that I ended with last time:
@@ -20,9 +20,9 @@ Let us start with reviewing the optimization roadmap that I ended with last time
 
 Config registration itself (SteeringManager.register_config) which gets called when a new (hash, phase) config is admitted I was able to pretty simply batch into a single non-blocking H2D transfer instead of the previous approach that was a different cudaMemcpy for every (layer, hook) combination.
 
-```
+```python
 for hook_point, layer_vecs in vectors.items():
-  items = [
+    items = [
         (layer_idx, vec)
         for layer_idx, vec in layer_vecs.items()
         if locally_owned_layers is None or layer_idx in locally_owned_layers
@@ -34,17 +34,17 @@ for hook_point, layer_vecs in vectors.items():
     raw_vecs = [vec for _, vec in items]
 
     arr = np.asarray(raw_vecs, dtype=np.float32)
-    cpu_t = torch.from_numpy(arr)
-    stacked = cpu_t.to(self.device)
-    
+    cpu_t = torch.from_numpy(arr).pin_memory()
+    stacked = cpu_t.to(self.device, non_blocking=True)
+
     stored[hook_point] = {
         layer_idx: stacked[i : i + 1] for i, layer_idx in enumerate(layer_idxs)
     }
-    
+
 self.config_vectors[key] = stored
 ```
 
-The microbench for the steering manager showed that this gave 86-93% speedup with this change:
+The `pin_memory()` + `non_blocking=True` pair is what's actually doing the work here. The previous code path went through `torch.tensor(vec, device="cuda")` for each `(layer, hook)` pair, which issues a synchronous `cudaMemcpy` per row. Stacking on the CPU first and shipping one pinned non-blocking copy collapses ~80 syncs down to one per hook. The microbench for the steering manager showed a 1.86–1.93× speedup:
 
 | layers / configs / hooks | baseline | new | speedup |
 | --- | ---: | ---: | ---: |
@@ -54,7 +54,7 @@ The microbench for the steering manager showed that this gave 86-93% speedup wit
 | 42 / 16 / 3_hooks | 263.0 ms | 140.9 ms | 1.87× |
 
 Another change made to the registration process was something I feel a bit silly for needing to do in the first place, using numpy arrays instead of lists of floats in
-the vector resolution and config hashing parts of this path. This allowed me to eliminate a per layer np.asarray(list, dtype=fp32) call while maintaining the hashes exactly. The benchmarks show:
+the vector resolution and config hashing parts of this path. The prior code re-converted the resolved list back to an ndarray inside `hash_steering_config` via `np.asarray(vec, dtype=np.float32).tobytes()` — once per layer, on the hot path, twice per request (prefill + decode). Pushing ndarrays through end-to-end skips the per-layer conversion entirely while keeping the hash bit-identical. The benchmarks show:
 
 `hash_steering_config` — uniform 7.7–8.3× across the sweep
 
@@ -84,8 +84,7 @@ Combined per-request savings (34-layer / 3-hooks / base+phase)
 
 ## Steering table/index building
 
-While not strictly config registration, the building of the steering tables and index had a lot of improvement to make and is related to the per-config paths
-that showed to be a significant source of overhead.
+This isn't strictly config registration, but the same per-config bookkeeping shows up again on the per-step populate path, and the wins there compound with the registration ones.
 
 One of the more significant changes was something that I mentioned in the previous post, which I erroneously thought that I would need a triton kernel for but ended up being able to do with regular pytorch code. This is the consolidation of the steering tables into a contiguous tensor that gets copied to the GPU in one go. The work done here is called on every decode step, so bringing this down is important.
 
@@ -99,13 +98,13 @@ The code I actually used to do this is a bit verbose for putting in a blog post,
 | 42 / 1 / 3_hooks | 2.56 ms | 1.31 ms | 1.96× |
 | 42 / 16 / 3_hooks | 5.46 ms | 4.26 ms | 1.28× |
 
-Building the steering index had a similar optimization path, replacing the per request assignment loop that uses np.repeat to expand the per-request rows into the per-token row array and copy it in a single non blocking H2D transfer: 
+Building the steering index had a similar optimization path, replacing the per-request slice-assign loop with a single `np.repeat` that expands the per-request rows into the per-token row array, then copies it in a single non-blocking H2D transfer:
 
-```
+```python
 expanded = np.repeat(
-                rows_scratch[:active_count],
-                n_tokens_scratch[:active_count],
-            )
+    rows_scratch[:active_count],
+    n_tokens_scratch[:active_count],
+)
 n_expanded = int(expanded.shape[0])
 n_expanded = min(n_expanded, index_pinned.shape[0], steering_index.shape[0])
 
@@ -115,7 +114,7 @@ steering_index[:n_expanded].copy_(
 )
 ```
 
-The benchmarks here were even better than the steering table population, though with the caveat that the fixed cost of performing the operation means that the batch size 1 scenarios are slower. This is unfortunate, but I'm generally chasing speedups on configurations that more closely resemble production workloads so this is an acceptable tradeoff when the mixed steered/unsteered batch size 16 path has a 3x improvement:
+The benchmarks here were even better than the steering table population, with the caveat that the `np.repeat` + pinned-copy path has fixed setup cost that doesn't amortize at batch size 1 — there, the old per-element write into a single GPU slot was actually cheaper. I'm generally chasing speedups on configurations that resemble production workloads, so this is an acceptable tradeoff when the mixed steered/unsteered batch-size-16 path has a 3× improvement:
 
 | scenario | num_reqs × tokens | baseline | new | speedup |
 | --- | --- | ---: | ---: | ---: |
@@ -152,7 +151,7 @@ instead of every time a vector is sent. The microbench shows that the not only d
 
 This is a tricky one. Previously, the indexed gather that pulls the correct steering configs for each token from the steering tables and the residual add that is the
 actual steering operation were two separate operations. Typically, you wouldn't actually need to use a Triton kernel to get these to fuse when using torch.compile
-because it does automatic kernel fusion for simple operations like this one. In our case though, it can't do this because the apply_steering custom op is registered 
+because it does automatic kernel fusion for simple operations like this one. In our case though, it can't do this because the `apply_steering` custom op is registered
 as opaque. It has to be opaque because everything starts off as zero vectors, so while writing this I found that Inductor optimizes it out because at compile time
 this looks like a no-op. If we let this happen, steering never actually happens! This means that we need to fuse the operations manually with a custom Triton kernel.
 This is a very simple operation so it's reasonable to do this. It's a small win, only removing one kernel launch between each operation, but this happens for every hook
@@ -160,23 +159,23 @@ point at every layer when you're steering so it's still worth it.
 
 The core operation is:
 
-```
+```python
 pid_n = tl.program_id(axis=0)
 
 row = tl.load(index_ptr + pid_n)
 
 hidden_row_ptr = hidden_ptr + pid_n * h_stride_n
 table_row_ptr = table_ptr + row * t_stride_r
-out_row_ptr = out_ptr * pid_n * o_stride_n
+out_row_ptr = out_ptr + pid_n * o_stride_n
 
 for h_off in range(0, H, BLOCK_H):
-  h_idx = h_off + tl.arange(0, BLOCK_H)
-  mask = h_idx < H
-  h_vals = tl.load(hidden_row_ptr + h_idx * h_stride_h, mask=mask)
-  t_vals = tl.load(table_row_ptr + h_idx * t_stride_h, mask=mask)
+    h_idx = h_off + tl.arange(0, BLOCK_H)
+    mask = h_idx < H
+    h_vals = tl.load(hidden_row_ptr + h_idx * h_stride_h, mask=mask)
+    t_vals = tl.load(table_row_ptr + h_idx * t_stride_h, mask=mask)
 
-  result = h_vals + t_vals.to(h_vals)
-  tl.store(out_row_ptr + h_idx * o_stride_h, result, mask=mask)
+    result = h_vals + t_vals.to(h_vals.dtype)
+    tl.store(out_row_ptr + h_idx * o_stride_h, result, mask=mask)
 ```
 
 There are some other pieces around choosing the block_H for your hardware and doing the kernel warmup ahead of graph capture so the JIT cost is frontloaded,
@@ -197,7 +196,7 @@ but this is the meat of it. The benchmarks show that this gives about a 4% reduc
 
 # Other features
 
-I thought I would shout out some other things I've been working on in this fork that aren't just the performance of the straight steering vector functionality. 
+Beyond raw latency, a few capabilities landed alongside the perf work that are worth a mention:
 
 - I made sure it supported tensor and pipeline parallelism, and because the post_mlp hook point comes after the down projection from the mlp block it ends up not needing any adaptation for expert parallelism. 
 - I added an activation capture and consumer plugin system that allows defining workloads to run based on the output of activations. Originally, this was made to be 
