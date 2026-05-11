@@ -61,16 +61,16 @@ the vector resolution and config hashing parts of this path. The prior code re-c
 | layers / hooks / overlap | baseline | new | speedup |
 | --- | ---: | ---: | ---: |
 | 26 / 3_hooks / base_only | 5.53 ms | 0.71 ms | 7.78× |
-| 34 / 3_hooks / base_plus_phase | 7.54 ms | 0.93 ms | **8.13×** |
+| 34 / 3_hooks / base_plus_phase | 7.54 ms | 0.93 ms | 8.13× |
 | 42 / 1_hook / base_plus_phase | 3.00 ms | 0.38 ms | 7.84× |
-| 42 / 3_hooks / base_only | 9.53 ms | 1.14 ms | **8.34×** |
+| 42 / 3_hooks / base_only | 9.53 ms | 1.14 ms | 8.34× |
 
 `resolve_effective_vectors` — 1.13–1.63× when there's a merge
 
 | layers / hooks / overlap | baseline | new | speedup |
 | --- | ---: | ---: | ---: |
 | 34 / 3_hooks / base_plus_phase | 20.58 ms | 13.27 ms | 1.55× |
-| 42 / 3_hooks / base_plus_phase | 26.74 ms | 16.45 ms | **1.63×** |
+| 42 / 3_hooks / base_plus_phase | 26.74 ms | 16.45 ms | 1.63× |
 | 34 / 1_hook / base_plus_phase | 6.37 ms | 4.39 ms | 1.45× |
 | 26 / 1_hook / base_only | 1.61 ms | 1.64 ms | 0.98× |
 
@@ -79,8 +79,8 @@ Combined per-request savings (34-layer / 3-hooks / base+phase)
 | stage | baseline | new | saved |
 | --- | ---: | ---: | ---: |
 | resolve (× 1) | 20.58 ms | 13.27 ms | 7.31 ms |
-| hash (× 2, prefill + decode) | 15.08 ms | 1.86 ms | **13.22 ms** |
-| **total** | 35.66 ms | 15.13 ms | **20.53 ms saved per request** |
+| hash (× 2, prefill + decode) | 15.08 ms | 1.86 ms | 13.22 ms |
+| total | 35.66 ms | 15.13 ms | 20.53 ms saved per request |
 
 ## Steering table/index building
 
@@ -92,7 +92,7 @@ The code I actually used to do this is a bit verbose for putting in a blog post,
 
 | layers / configs / hooks | baseline | new | speedup |
 | --- | ---: | ---: | ---: |
-| 26 / 1 / 3_hooks | 1.64 ms | 0.83 ms | **1.97×** |
+| 26 / 1 / 3_hooks | 1.64 ms | 0.83 ms | 1.97× |
 | 26 / 16 / 3_hooks | 3.40 ms | 2.72 ms | 1.25× |
 | 34 / 8 / 3_hooks | 3.16 ms | 2.08 ms | 1.52× |
 | 42 / 1 / 3_hooks | 2.56 ms | 1.31 ms | 1.96× |
@@ -118,11 +118,11 @@ The benchmarks here were even better than the steering table population, with th
 
 | scenario | num_reqs × tokens | baseline | new | speedup |
 | --- | --- | ---: | ---: | ---: |
-| **decode_128** | 128 × 1 | 0.910 ms | 0.110 ms | **8.36×** |
-| **decode_64** | 64 × 1 | 0.467 ms | 0.070 ms | **6.70×** |
+| decode_128 | 128 × 1 | 0.910 ms | 0.110 ms | 8.36× |
+| decode_64 | 64 × 1 | 0.467 ms | 0.070 ms | 6.70× |
 | decode_32 | 32 × 1 | 0.237 ms | 0.052 ms | 4.63× |
 | decode_8 | 8 × 1 | 0.070 ms | 0.037 ms | 1.90× |
-| **mixed_16** | 1×256 + 15×1 | 0.128 ms | 0.042 ms | **3.07×** |
+| mixed_16 | 1×256 + 15×1 | 0.128 ms | 0.042 ms | 3.07× |
 | decode_1 | 1 × 1 | 0.017 ms | 0.033 ms | 0.53× ↓ |
 | prefill_1×1024 | 1 × 1024 | 0.017 ms | 0.033 ms | 0.53× ↓ |
 
@@ -144,8 +144,8 @@ instead of every time a vector is sent. The microbench shows that the not only d
 | 26 / 1_hook | 7.02 ms | 0.010 ms | 676× | 599 583 → 214 |
 | 26 / 3_hooks | 22.15 ms | 0.011 ms | 2 096× | 1 798 377 → 214 |
 | 34 / 1_hook | 9.06 ms | 0.010 ms | 867× | 784 001 → 214 |
-| 34 / 3_hooks | 28.89 ms | 0.011 ms | **2 740×** | 2 351 649 → 214 |
-| 42 / 3_hooks | 37.43 ms | 0.011 ms | **3 548×** | 2 904 930 → 214 |
+| 34 / 3_hooks | 28.89 ms | 0.011 ms | 2 740× | 2 351 649 → 214 |
+| 42 / 3_hooks | 37.43 ms | 0.011 ms | 3 548× | 2 904 930 → 214 |
 
 ## Gather-add Fused Kernel
 
@@ -184,18 +184,15 @@ There are some other pieces around choosing the `BLOCK_H` for your hardware and 
 
 ## Things I tried that didn't pay off
 
-<div class="table-row">
+For honesty's sake, a handful of things I tried alongside the wins above that ended up closed without merging. Each was a reasonable hypothesis on paper:
 
-| label | bs | pre-merge | post-merge | Δ |
-| :--- | :--- | :--- | :--- | :--- |
-| graphs_with_steer | 1 | 1575.6 ms | 1519.0 ms | 1.04× |
-| graphs_with_steer | 4 | 1613.8 ms | 1554.7 ms | 1.04× |
-| graphs_with_steer | 8 | 1706.6 ms | 1644.3 ms | 1.04× |
-| eager_with_steer | 1 | 5237.6 ms | 5240.6 ms | 1.00× |
-| eager_with_steer | 4 | 5247.2 ms | 5300.1 ms | 0.99× |
-| eager_with_steer | 8 | 5336.1 ms | 5421.0 ms | 0.98× |
-
-</div>
+- zstd-compressing the packed inline vectors over IPC - Predicted ~30 ms/request on the assumption IPC bandwidth was the bottleneck. Bench showed a 15–64 ms regression on every shape — on a single-host loopback ZMQ deployment with PCIe 4.0, a 520 KB transfer takes ~17 μs, while zstd compress+decompress costs ~5–10 ms per request. The msgspec dict walk dominated the cost, not zstd, so a cheaper compressor wouldn't have saved it either.
+- Shared-memory IPC - Client mmaps a region, ships only `(offset, length, dtype, shape)` — ~32 bytes per layer instead of the packed blob. Came out flat (±9 ms) on every benched shape, because once the inline-pack PR shrank the payload to model dtype, the residual per-request overhead was hash + msgspec walk + worker-side resolve, none of which mmap touches.
+- In-place `apply_steering` - `mutates_args=["hidden_states"]` to halve per-call bandwidth (skip the fresh output allocation). Didn't land — the any-active short-circuit PR landed instead and partially subsumed the gain.
+- Autotuning the steering Triton kernel over a few `BLOCK_H` / `num_warps` configs - Didn't beat the hand-picked heuristic enough to be worth the cache-key complexity.
+- int16 `steering_index` to quarter the per-gather index bandwidth - Capped `max_steering_configs` at 32764, cast to int32 inside the kernel before stride math. Real but small win, and not net-positive enough to justify the new admission-time guard.
+- Fusing PRE_ATTN + POST_ATTN into one kernel for gemma3 - Drops 28 launches per forward. Closed in favor of broader cross-model work like the any-active short-circuit, which gets most of the value without the per-model surgery.
+- Fusing `apply_steering` with the following `GemmaRMSNorm` - Microbench showed 3.6–5.5× on the kernel itself, but kept the scope gemma3-only and didn't generalize cleanly.
 
 # Other features
 
