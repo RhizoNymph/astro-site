@@ -6,7 +6,7 @@ pubDate: 2026-04-26
 
 Recently I asked one of my friends who does a lot with mech interp what she was using for her activation steering (adding a steering vector to the residual stream of a model to alter its behavior) and she mentioned that she was using bespoke code written with hf transformers. I found it hard to believe that this was the best way, so I did a little digging to see what was out there. Of course I came across TransformerLens, nnsight, and the OG repeng library but I was a bit astounded that none of vLLM, sglang, or llama server had support for it. 
 
-That’s why I forked vLLM and added it myself, with support for both global and per-request steering as well as both unified and phase-specific steering for prefill and decode stages. Research code should be made production ready, lest the results of the research never actually affect production workloads! I’m sure the Big Labs have their own optimized inference pipelines that include steering support, but open source should have it too. 
+That’s why I forked vLLM and added it myself, with support for both global and per-request steering as well as both unified and phase-specific steering for prefill and decode stages. Research code should be made production ready, lest the results of the research never actually affect production workloads! I’m sure the Big Labs have their own optimized inference pipelines that include steering support, but open source should have it too. I believe that the open source ecosystem having interp tooling will lead to better outcomes overall.
 
 I want to talk in this article about how I implemented it and how to use it. If you just want to know how to use it, skip to "API Usage" at the end. My goal in this project was to make researchers able to do their work faster as well as to make it as simple as possible to apply their work in production. To do this, I knew I would need to keep the parts of vLLM that make it fast intact. Namely I needed to not break the CUDA graphs, torch.compile support, the prefix caching, or the continuous batching scheduler. To accomplish not breaking the CUDA graphs or torch.compile support, you have to design around it. No conditionals, every buffer and tensor must be statically sized, and you have to allocate everything before the graph is built. 
 
@@ -505,37 +505,70 @@ You will receive a response that looks like:
 }
 ```
 
+Either the list-of-floats form shown above or the binary blob form described in the Per Request section is accepted here. The wire-format optimization is only load-bearing on the per-request path where the API server parses a fresh body per request, so on the global endpoint the choice is purely a client-side convenience.
+
 There is also an endpoint /v1/steering/clear which will zero out all vectors without needing to supply a request body.
 
 ## Per Request
 
-Per request steering is done via the extra_body key in the OpenAI completions spec like this:
+Per request steering is done via the extra_body key in the OpenAI completions spec. Since publication, I've changed the wire format for per-request inline vectors to a binary blob with a small JSON header (covered in [part 2](https://www.rhizonymph.com/blog/activation-steering-boogaloo/)). The list-of-floats form shown further down still works for the global and named-module endpoints, but it is no longer accepted on the per-request path — that path now requires the binary format, because the JSON parse + ndarray construction tax on the asyncio event loop was the dominant remaining cost there:
 
 ```python
+import base64
+import numpy as np
 from openai import OpenAI
 
 client = OpenAI(base_url="http://localhost:8000/v1", api_key="unused")
+
+# Stack the per-layer vectors for each hook into a contiguous (num_layers, hidden_size) array
+post_mlp_vecs = np.stack([vec_for_layer_15, vec_for_layer_20], axis=0).astype(np.float32)
+pre_attn_vecs = np.stack([prefill_vec_for_layer_15], axis=0).astype(np.float32)
 
 response = client.chat.completions.create(
     model="google/gemma-3-4b-it",
     messages=[{"role": "user", "content": "Hello"}],
     extra_body={
         "steering_vectors": {
-            "pre_attn": {15: [0.1, 0.2, ...]},
-            "post_mlp": {15: [0.3, 0.4, ...]},
+            "post_mlp": {
+                "dtype": "float32",
+                "shape": list(post_mlp_vecs.shape),
+                "layer_indices": [15, 20],
+                "data": base64.b64encode(post_mlp_vecs.tobytes()).decode(),
+            },
         },
         "prefill_steering_vectors": {
-            "pre_attn": {15: [0.5, 0.6, ...]},
+            "pre_attn": {
+                "dtype": "float32",
+                "shape": list(pre_attn_vecs.shape),
+                "layer_indices": [15],
+                "data": base64.b64encode(pre_attn_vecs.tobytes()).decode(),
+            },
         },
     },
 )
+```
+
+Each hook carries a stacked `(num_layers, hidden_size)` array along with a header describing the dtype, shape, and which layer index each row corresponds to. Decode on the server is a single `np.frombuffer`, which skips the per-float parse and per-row ndarray construction that the old format paid. An optional `scales: list[float]` field (same length as `layer_indices`) can be included on each hook to multiply each row, so the same packed bytes can be reused at different strengths across requests without re-encoding the blob.
+
+For completeness, the original list-of-floats form looked like this and is still what the global and named-module endpoints accept, but submitting it on the per-request path will be rejected:
+
+```python
+extra_body={
+    "steering_vectors": {
+        "pre_attn": {15: [0.1, 0.2, ...]},
+        "post_mlp": {15: [0.3, 0.4, ...]},
+    },
+    "prefill_steering_vectors": {
+        "pre_attn": {15: [0.5, 0.6, ...]},
+    },
+}
 ```
 
 Otherwise, it works the same as the global steering endpoint except since it's per request you don't need the replace key.
 
 ## Named Configs
 
-As a way of helping the UX with this, I added named steering configs. To register one, hit the POST /v1/steering/modules/register endpoint:
+As a way of helping the UX with this, I added named steering configs. As with the global endpoint, the inner vectors here can be supplied either as the list-of-floats form shown below or as the binary blob form from the Per Request section — register-time payloads only get parsed once per module, so the wire format doesn't matter for performance. To register one, hit the POST /v1/steering/modules/register endpoint:
 
 ```
 
